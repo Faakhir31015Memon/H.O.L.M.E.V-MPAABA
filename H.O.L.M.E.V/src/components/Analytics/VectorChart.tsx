@@ -1,7 +1,7 @@
 import React from 'react';
 import { useHolmev } from '../../context/HolmevContext';
 import { CyberCard } from '../UI/CyberCard';
-import { LineChart, Activity, Zap, TrendingUp } from 'lucide-react';
+import { LineChart, Activity } from 'lucide-react';
 
 export const VectorChart: React.FC = () => {
   const { chart, latency, overkillMode, metrics } = useHolmev();

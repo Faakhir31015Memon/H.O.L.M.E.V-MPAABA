@@ -1,7 +1,7 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useHolmev } from '../../context/HolmevContext';
-import { HOLMEVBox } from '../../types/holmev';
-import { Camera, Crosshair, RefreshCw, ShieldAlert, Sparkles, CheckCircle2 } from 'lucide-react';
+import type { HOLMEVBox } from '../../types/holmev';
+import { Camera, Crosshair, CheckCircle2 } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 
 export const CvVisionStack: React.FC = () => {
@@ -15,7 +15,6 @@ export const CvVisionStack: React.FC = () => {
   } = useHolmev();
 
   const [selectedBoxId, setSelectedBoxId] = useState<string | null>(boxes[0]?.id || null);
-  const [activeScan, setActiveScan] = useState<{ x: number; y: number }>({ x: 240, y: 160 });
   const [flashEffect, setFlashEffect] = useState(false);
 
   // Keep ref for animation loop
@@ -155,13 +154,13 @@ export const CvVisionStack: React.FC = () => {
         // Top-left
         ctx.beginPath();
         ctx.moveTo(box.x, box.y + cornerLen);
-        ctx.lineTo(box.x, box.y);
+        ctx.lineTo(box.x);
         ctx.lineTo(box.x + cornerLen, box.y);
         ctx.stroke();
         // Top-right
         ctx.beginPath();
         ctx.moveTo(box.x + box.w - cornerLen, box.y);
-        ctx.lineTo(box.x + box.w, box.y);
+        ctx.lineTo(box.x);
         ctx.lineTo(box.x + box.w, box.y + cornerLen);
         ctx.stroke();
         // Bottom-left
