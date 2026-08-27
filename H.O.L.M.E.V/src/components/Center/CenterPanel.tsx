@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useHolmev } from '../../context/HolmevContext';
+import { useHolmev } from '../../context/useHolmev';
 import { CyberCard } from '../UI/CyberCard';
 import { ReactorCore3D } from './ReactorCore3D';
 import { CvVisionStack } from './CvVisionStack';

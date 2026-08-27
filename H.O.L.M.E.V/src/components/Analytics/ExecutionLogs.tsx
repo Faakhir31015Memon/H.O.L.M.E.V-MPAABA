@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useHolmev } from '../../context/HolmevContext';
+import { useHolmev } from '../../context/useHolmev';
 import { CyberCard } from '../UI/CyberCard';
 import type { LogLevel } from '../../types/holmev';
 import { Terminal, Trash2, Download, Search, ArrowDownCircle } from 'lucide-react';
