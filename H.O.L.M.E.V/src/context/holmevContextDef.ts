@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { HOLMEVState, HOLMEVLog, HOLMEVBox, LogLevel } from '../types/holmev';
+import type { HOLMEVState, HOLMEVBox, LogLevel } from '../types/holmev';
 
 export interface HolmevContextType extends HOLMEVState {
   addLog: (text: string, source?: string, level?: LogLevel) => void;
