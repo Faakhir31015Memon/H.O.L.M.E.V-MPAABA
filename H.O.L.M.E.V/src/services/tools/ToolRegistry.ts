@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Central Tool Registry for H.O.L.M.E.V
 // Routes function calls to real typed executors with strict result contracts
 
@@ -10,17 +11,17 @@ import { smartHomeTool } from './implementations/SmartHomeTool';
 import { navigationTool } from './implementations/NavigationTool';
 
 export class ToolRegistry {
-  private tools: Map<string, ITool<never, unknown>> = new Map();
+  private tools: Map<string, ITool<any, any>> = new Map();
 
   constructor() {
-    this.register(webSearchTool as unknown as ITool<never, unknown>);
-    this.register(systemControlTool as unknown as ITool<never, unknown>);
-    this.register(circuitCadTool as unknown as ITool<never, unknown>);
-    this.register(smartHomeTool as unknown as ITool<never, unknown>);
-    this.register(navigationTool as unknown as ITool<never, unknown>);
+    this.register(webSearchTool);
+    this.register(systemControlTool);
+    this.register(circuitCadTool);
+    this.register(smartHomeTool);
+    this.register(navigationTool);
   }
 
-  public register(tool: ITool<never, unknown>) {
+  public register(tool: ITool<any, any>) {
     this.tools.set(tool.definition.name, tool);
   }
 
