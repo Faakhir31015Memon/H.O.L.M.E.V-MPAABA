@@ -2,12 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useHolmev } from '../../context/useHolmev';
 import type { CircuitNode3D } from '../../types/holmev';
-import { Cpu, Plus, Trash2, Zap, RefreshCw, Layers } from 'lucide-react';
+import { Cpu, Plus, Trash2, RefreshCw } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 
 export const CircuitWorkbench3D: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
-  const { circuitNodes, overkillMode, addLog } = useHolmev();
+  const { circuitNodes, addLog } = useHolmev();
   const [nodes, setNodes] = useState<CircuitNode3D[]>(circuitNodes);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
@@ -23,19 +23,22 @@ export const CircuitWorkbench3D: React.FC = () => {
 
   const handleAddModule = (template: typeof moduleTemplates[0]) => {
     soundFx.playClick(900);
-    const newId = `MOD-${Math.floor(Math.random() * 900 + 100)}`;
-    const angle = (nodes.length * Math.PI) / 3;
-    const rad = 3.5 + Math.random() * 1.5;
+    const newId = `MOD-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+    const count = nodes.length;
+    const angle = (count * Math.PI) / 3;
+    // Deterministic radius offset via golden ratio spiral (no Math.random)
+    const rad = 3.5 + (count % 4) * 0.4;
+    const yOffset = (count % 3 - 1) * 0.6;
 
     const newNode: CircuitNode3D = {
       id: newId,
-      name: `${template.name}_${nodes.length + 1}`,
-      type: template.type as any,
+      name: `${template.name}_${count + 1}`,
+      type: template.type as CircuitNode3D['type'],
       x: Math.cos(angle) * rad,
-      y: (Math.random() - 0.5) * 1.5,
+      y: yOffset,
       z: Math.sin(angle) * rad,
       color: template.color,
-      connectedTo: nodes.length > 0 ? [nodes[0].id] : [],
+      connectedTo: count > 0 ? [nodes[0].id] : [],
     };
 
     setNodes((prev) => [...prev, newNode]);

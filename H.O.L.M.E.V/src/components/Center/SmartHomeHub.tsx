@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useHolmev } from '../../context/useHolmev';
 import type { SmartAppliance } from '../../types/holmev';
-import { Power, Wind, Sun, Tv, Radio, Wifi, Zap, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Power, Wind, Sun, Tv, Zap } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 
 export const SmartHomeHub: React.FC = () => {
@@ -112,7 +112,7 @@ export const SmartHomeHub: React.FC = () => {
           const isFan = device.type === 'fan';
           const isAc = device.type === 'ac';
           const isLight = device.type === 'light';
-          const isTv = device.type === 'tv';
+
 
           return (
             <div

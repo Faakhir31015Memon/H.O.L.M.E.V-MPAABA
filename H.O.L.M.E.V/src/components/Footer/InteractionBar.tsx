@@ -1,17 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { useHolmev } from '../../context/useHolmev';
-import { Mic, Send, Terminal, Loader2, Sparkles, MessageSquare } from 'lucide-react';
+import { Mic, Send, Loader2, MessageSquare } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 
 export const InteractionBar: React.FC = () => {
-  const {
-    systemState,
-    startListening,
-    stopListening,
-    executeCommand,
-    overkillMode,
-    continuousVoice,
-  } = useHolmev();
+  const { systemState, startListening, stopListening, executeCommand, overkillMode } = useHolmev();
 
   const [inputVal, setInputVal] = useState('');
   const [history, setHistory] = useState<string[]>([]);

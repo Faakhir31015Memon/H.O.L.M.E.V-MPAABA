@@ -97,7 +97,7 @@ export const CenterPanel: React.FC = () => {
               type="button"
               onClick={() => {
                 soundFx.playClick(800);
-                setActiveCenterTab(tab.id as any);
+                setActiveCenterTab(tab.id);
               }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded font-mono-tech text-xs tracking-wider transition-all flex-shrink-0 ${
                 activeCenterTab === tab.id

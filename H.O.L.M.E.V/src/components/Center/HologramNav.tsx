@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useHolmev } from '../../context/useHolmev';
 import type { NavigationRoute } from '../../types/holmev';
-import { Compass, MapPin, Navigation, CornerUpRight, ArrowUp, Flag, Search } from 'lucide-react';
+import { Compass, MapPin, CornerUpRight, ArrowUp, Flag, Search } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 
 export const HologramNav: React.FC = () => {

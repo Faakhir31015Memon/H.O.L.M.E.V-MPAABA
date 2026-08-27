@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useHolmev } from '../../context/useHolmev';
 import type { HOLMEVBox, UserEmotion } from '../../types/holmev';
-import { Camera, Crosshair, CheckCircle2, Video, VideoOff, Smile, Sparkles } from 'lucide-react';
+import { Camera, Crosshair, Video, VideoOff, Smile } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 
 export const CvVisionStack: React.FC = () => {
@@ -20,7 +20,6 @@ export const CvVisionStack: React.FC = () => {
   const [selectedBoxId, setSelectedBoxId] = useState<string | null>(boxes[0]?.id || null);
   const [flashEffect, setFlashEffect] = useState(false);
   const [isLiveWebcam, setIsLiveWebcam] = useState(false);
-  const [webcamError, setWebcamError] = useState<string | null>(null);
 
   const boxesRef = useRef<HOLMEVBox[]>(boxes);
   useEffect(() => {
@@ -51,13 +50,12 @@ export const CvVisionStack: React.FC = () => {
           videoRef.current.play();
         }
         setIsLiveWebcam(true);
-        setWebcamError(null);
         addLog('Live Optical Webcam stream connected! Face emotion classifier online.', 'VISION_IO', 'success');
         soundFx.playSuccess();
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Access denied';
         console.warn('Webcam permission error:', err);
-        setWebcamError(err.message || 'Webcam permission denied or not found.');
-        addLog(`Webcam error: ${err.message || 'Access denied'}. Operating in simulated mode.`, 'VISION_IO', 'warn');
+        addLog(`Webcam error: ${msg}. Operating in simulated mode.`, 'VISION_IO', 'warn');
       }
     }
   };

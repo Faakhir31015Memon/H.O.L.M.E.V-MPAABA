@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useHolmev } from '../../context/useHolmev';
 import type { CCTVFeed } from '../../types/holmev';
-import { Camera, LayoutGrid, Maximize2, Shield, Eye } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 
 export const MultiCameraMatrix: React.FC = () => {
-  const { cctvFeeds, activeCctvIds, overkillMode, addLog } = useHolmev();
+  const { cctvFeeds, overkillMode, addLog } = useHolmev();
   const [feeds, setFeeds] = useState<CCTVFeed[]>(
     cctvFeeds && cctvFeeds.length > 0
       ? cctvFeeds

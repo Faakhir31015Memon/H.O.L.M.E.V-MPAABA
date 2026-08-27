@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useHolmev } from '../../context/useHolmev';
-import { Shield, Volume2, VolumeX, Zap, Cpu, Activity, Smile, Mic } from 'lucide-react';
+import { Volume2, VolumeX, Zap, Activity, Smile, Mic } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const {
@@ -9,7 +9,6 @@ export const Header: React.FC = () => {
     metrics,
     soundEnabled,
     toggleSound,
-    securityLevel,
     userEmotion,
     continuousVoice,
     toggleContinuousVoice,

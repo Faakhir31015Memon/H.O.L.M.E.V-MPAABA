@@ -50,7 +50,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   
   // Multimodal AI Brain & Smart Systems State
   const [userEmotion, setUserEmotion] = useState<UserEmotion>('NEUTRAL');
-  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const [isCameraActive] = useState<boolean>(false);
   const [continuousVoice, setContinuousVoice] = useState<boolean>(true);
   const [geminiApiKey, setGeminiApiKey] = useState<string>('');
 
@@ -68,7 +68,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     { id: 'cam-ent', name: 'CAM_04: ENTRANCE PERIMETER', room: 'Entrance', status: 'MOTION_DETECTED', fps: 30, resolution: '1080p', selected: false },
   ]);
 
-  const [activeCctvIds, setActiveCctvIds] = useState<string[]>(['cam-bed', 'cam-hall']);
+  const [activeCctvIds] = useState<string[]>(['cam-bed', 'cam-hall']);
 
   const [circuitNodes, setCircuitNodes] = useState<CircuitNode3D[]>([
     { id: 'mod-1', name: 'ESP32_AI_CORE', type: 'mcu', x: 0, y: 0, z: 0, color: '#00f3ff' },
@@ -105,12 +105,14 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [latency, setLatency] = useState<number[]>([12, 11, 14, 12, 10, 13, 11, 15, 12, 11, 12]);
   const [boxes, setBoxes] = useState<HOLMEVBox[]>(INITIAL_BOXES);
-  const [scan, setScan] = useState<{ x: number; y: number }>({ x: 240, y: 160 });
+  const [scan] = useState<{ x: number; y: number }>({ x: 240, y: 160 });
   const [snapshot, setSnapshot] = useState<HOLMEVState['snapshot']>(null);
   const [lastCommand, setLastCommand] = useState<HOLMEVState['lastCommand']>(null);
   const [pendingConfirm, setPendingConfirm] = useState<HOLMEVState['pendingConfirm']>(null);
 
   const speechRef = useRef<BrowserSpeechRecognition | null>(null);
+  // Ref to allow executeCommand to call startListening without circular hook dependency
+  const startListeningRef = useRef<(() => void) | null>(null);
 
   const getTimestamp = () => {
     const now = new Date();
@@ -288,7 +290,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // If continuous voice mode is enabled and user didn't deactivate, continue listening!
         if (continuousVoice && !lower.includes('deactivate') && !lower.includes('bye')) {
           setTimeout(() => {
-            startListening();
+            startListeningRef.current?.();
           }, 1500);
         }
       }, 600);
@@ -370,6 +372,11 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       simulateVoiceQuery();
     }, 2800);
   }, [addLog, executeCommand, simulateVoiceQuery, stopListening, systemState]);
+
+  // Wire the ref after startListening is defined (never during render)
+  useEffect(() => {
+    startListeningRef.current = startListening;
+  });
 
   const captureSnapshot = useCallback((dataUrl?: string) => {
     soundFx.playScan();

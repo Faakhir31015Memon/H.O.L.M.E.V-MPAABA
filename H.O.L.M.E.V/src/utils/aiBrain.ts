@@ -7,7 +7,7 @@ interface BrainResponse {
   text: string;
   detectedLanguage: 'roman_urdu' | 'urdu' | 'english' | 'hindi';
   intent?: 'iot_control' | 'cctv_select' | 'navigation' | 'circuit_cad' | 'general';
-  actionPayload?: any;
+  actionPayload?: unknown;
 }
 
 export class AIBrainEngine {
@@ -55,7 +55,6 @@ export class AIBrainEngine {
     }
 
     // 2. Local Intelligent Neural Engine with friendly emotional awareness & language matching
-    let responseText = '';
     const emotionContext =
       emotion === 'HAPPY'
         ? 'Aap khush lag rahe hain! '
@@ -64,6 +63,7 @@ export class AIBrainEngine {
         : emotion === 'FOCUSED'
         ? 'Full focus mode mein hain aap! '
         : '';
+    let responseText: string;
 
     // Smart Intent Recognition
     if (lower.includes('fan') || lower.includes('pankha')) {
