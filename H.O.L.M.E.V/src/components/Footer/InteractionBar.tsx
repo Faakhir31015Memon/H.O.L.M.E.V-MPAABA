@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useHolmev } from '../../context/useHolmev';
-import { Mic, Send, Terminal, Loader2 } from 'lucide-react';
+import { Mic, Send, Terminal, Loader2, Sparkles, MessageSquare } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 
 export const InteractionBar: React.FC = () => {
@@ -10,6 +10,7 @@ export const InteractionBar: React.FC = () => {
     stopListening,
     executeCommand,
     overkillMode,
+    continuousVoice,
   } = useHolmev();
 
   const [inputVal, setInputVal] = useState('');
@@ -18,14 +19,14 @@ export const InteractionBar: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const quickCommands = [
-    '/help',
+    'HOLMEV fan band kar do',
+    'HOLMEV light on karo',
+    'HOLMEV show bedroom and hall',
+    'HOLMEV IIC Road Sauna route',
+    'HOLMEV 3D circuit open karo',
     '/diagnostics',
-    '/security',
-    '/purge',
     '/overkill',
-    '/cv',
-    '/status',
-    '/scan',
+    '/help',
   ];
 
   const handleVoiceToggle = () => {
@@ -84,8 +85,8 @@ export const InteractionBar: React.FC = () => {
       {/* Autocomplete Quick Command Chips */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px] font-mono-tech">
         <span className="text-gray-500 text-[10px] uppercase flex-shrink-0 flex items-center gap-1">
-          <Terminal className="w-3 h-3 text-cyan-500" />
-          CMD:
+          <MessageSquare className="w-3 h-3 text-cyan-500" />
+          PROMPTS:
         </span>
         {quickCommands.map((cmd) => (
           <button
@@ -96,7 +97,7 @@ export const InteractionBar: React.FC = () => {
               setInputVal(cmd);
               inputRef.current?.focus();
             }}
-            className="px-2 py-0.5 rounded bg-white/[0.03] hover:bg-cyan-500/20 border border-white/5 hover:border-cyan-500/40 text-gray-400 hover:text-cyan-300 transition-colors flex-shrink-0"
+            className="px-2.5 py-0.5 rounded bg-white/[0.03] hover:bg-cyan-500/20 border border-white/5 hover:border-cyan-500/40 text-gray-300 hover:text-cyan-300 transition-colors flex-shrink-0"
           >
             {cmd}
           </button>
@@ -105,7 +106,6 @@ export const InteractionBar: React.FC = () => {
 
       {/* Main Interaction Input Bar */}
       <div className="relative flex items-center gap-2 bg-[#020a17]/95 backdrop-blur-md border border-cyan-500/30 rounded p-1.5 shadow-[0_0_20px_rgba(0,243,255,0.08)]">
-        {/* Sci-Fi Decorative Corner accents */}
         <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-cyan-400 pointer-events-none" />
         <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-cyan-400 pointer-events-none" />
 
@@ -116,7 +116,7 @@ export const InteractionBar: React.FC = () => {
           title={
             systemState === 'LISTENING'
               ? 'Stop Listening'
-              : 'Voice Interaction (Click to Speak)'
+              : 'Voice Interaction (Speaks & Listens in Urdu/English)'
           }
           className={`flex items-center justify-center w-10 h-10 rounded border transition-all duration-300 relative group flex-shrink-0 ${getVoiceBtnStyle()}`}
         >
@@ -145,8 +145,8 @@ export const InteractionBar: React.FC = () => {
             onKeyDown={handleKeyDown}
             placeholder={
               systemState === 'LISTENING'
-                ? 'Listening to voice stream...'
-                : 'Enter neural command or prompt (e.g. /diagnostics, /overkill, /help)...'
+                ? 'Listening continuously... (Speak in Urdu, Roman Urdu, or English)'
+                : 'Ask HOLMEV anything (e.g. "fan band kar de", "bedroom camera dikhao", "route to sauna tower")...'
             }
             className="w-full bg-transparent border-none outline-none font-mono-tech text-sm text-gray-200 placeholder-gray-500 selection:bg-cyan-500/40"
           />

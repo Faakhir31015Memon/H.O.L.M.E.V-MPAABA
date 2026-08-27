@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useHolmev } from '../../context/useHolmev';
-import { Shield, Volume2, VolumeX, Zap, Cpu, Activity } from 'lucide-react';
+import { Shield, Volume2, VolumeX, Zap, Cpu, Activity, Smile, Mic } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const {
@@ -10,6 +10,9 @@ export const Header: React.FC = () => {
     soundEnabled,
     toggleSound,
     securityLevel,
+    userEmotion,
+    continuousVoice,
+    toggleContinuousVoice,
   } = useHolmev();
 
   const [time, setTime] = useState<{ local: string; utc: string; ms: string }>({
@@ -45,9 +48,9 @@ export const Header: React.FC = () => {
 
   const getStatusText = () => {
     if (overkillMode) return 'OVERKILL ENGAGED // 4.8 GHz';
-    if (systemState === 'LISTENING') return 'AUDIO STREAM ACTIVE...';
-    if (systemState === 'PROCESSING') return 'NEURAL COMPUTE IN PROGRESS...';
-    return 'SYSTEM ONLINE // ALPHA NOMINAL';
+    if (systemState === 'LISTENING') return 'MULTILINGUAL AUDIO STREAM ACTIVE...';
+    if (systemState === 'PROCESSING') return 'MULTIMODAL AI BRAIN SYNTHESIZING...';
+    return 'HOLMEV AI ONLINE // FULL MULTIMODAL';
   };
 
   const getStatusColor = () => {
@@ -108,16 +111,16 @@ export const Header: React.FC = () => {
                   H.O.L.M.E.V
                 </h1>
                 <span className="text-[10px] font-mono-tech px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-300 tracking-wider">
-                  v2.4.9-PROD
+                  AI-BRAIN v2.5
                 </span>
               </div>
               <p className="text-[10px] font-mono-tech text-gray-400 tracking-wider hidden sm:block">
-                HIGHLY OPTIMIZED LEARNING &amp; MULTIMODAL ENHANCED VIRTUAL ASSISTANT
+                MULTIMODAL ASSISTANT // IOT HUB // 3D CAD // CCTV MATRIX
               </p>
             </div>
           </div>
 
-          {/* Status Badge (visible on mobile in row) */}
+          {/* Status Badge (mobile) */}
           <div className="md:hidden flex items-center gap-1.5 px-2 py-1 rounded border text-[11px] font-mono-tech uppercase">
             <span className={`w-2 h-2 rounded-full ${getDotColor()}`} />
             <span className={overkillMode ? 'text-red-400' : 'text-cyan-400'}>
@@ -126,7 +129,7 @@ export const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* Center: System Status Pill */}
+        {/* Center: System Status & Multimodal Badges */}
         <div className="hidden md:flex items-center gap-3">
           <div
             className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border text-xs font-mono-tech tracking-wider transition-all duration-300 ${getStatusColor()}`}
@@ -135,20 +138,29 @@ export const Header: React.FC = () => {
             <span className="font-semibold">{getStatusText()}</span>
           </div>
 
-          {/* Badges */}
-          <div className="flex items-center gap-1.5 text-[10px] font-mono-tech">
-            <div className="flex items-center gap-1 px-2 py-1 bg-white/[0.03] border border-white/10 rounded text-gray-300">
-              <Shield className="w-3 h-3 text-cyan-400" />
-              <span>{securityLevel}</span>
-            </div>
-            <div className="flex items-center gap-1 px-2 py-1 bg-white/[0.03] border border-white/10 rounded text-gray-300">
-              <Cpu className="w-3 h-3 text-blue-400" />
-              <span>CUDA-ACCEL</span>
-            </div>
+          {/* User Face Emotion Badge */}
+          <div className="flex items-center gap-1 px-2.5 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded text-xs font-mono-tech text-cyan-300">
+            <Smile className="w-3.5 h-3.5 text-cyan-400" />
+            <span>MOOD: <strong>{userEmotion}</strong></span>
           </div>
+
+          {/* Continuous Voice Loop Toggle */}
+          <button
+            type="button"
+            onClick={toggleContinuousVoice}
+            title="Toggle Continuous Conversation Loop"
+            className={`flex items-center gap-1 px-2 py-1 border rounded text-[10px] font-mono-tech transition-colors ${
+              continuousVoice
+                ? 'bg-amber-500/15 border-amber-400/50 text-amber-300'
+                : 'bg-white/5 border-white/10 text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            <Mic className="w-3 h-3" />
+            <span>CONTINUOUS: {continuousVoice ? 'ON' : 'OFF'}</span>
+          </button>
         </div>
 
-        {/* Right: Real-time Digital Clock, Latency & Controls */}
+        {/* Right: Digital Clock, Latency & Controls */}
         <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
           {/* Latency Gauge */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/[0.03] border border-cyan-500/20 rounded text-xs font-mono-tech">
