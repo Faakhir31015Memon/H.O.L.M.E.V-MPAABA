@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { HOLMEVState, HOLMEVLog, HOLMEVBox, SystemState, LogLevel } from '../types/holmev';
+import type { HOLMEVState, HOLMEVLog, HOLMEVBox, SystemState, LogLevel } from '../types/holmev';
 import { INITIAL_BOXES, INITIAL_LOGS } from '../utils/mockData';
 import { soundFx } from '../utils/soundFx';
 
@@ -208,7 +208,6 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         };
 
         recognition.onerror = () => {
-          // Fallback after short simulated listen
           setTimeout(() => {
             if (systemState === 'LISTENING') {
               simulateVoiceQuery();
@@ -327,7 +326,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       return responseText;
     },
-    [addLog, clearLogs, metrics, overkillMode, purgeBuffers, runDiagnostics, runSecurityScan, securityLevel, toggleCvStack, toggleOverkill]
+    [addLog, clearLogs, metrics, purgeBuffers, runDiagnostics, runSecurityScan, securityLevel, toggleCvStack, toggleOverkill]
   );
 
   // Snapshot capture
@@ -349,7 +348,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const updateBoxPosition = useCallback((id: string, updates: Partial<HOLMEVBox>) => {
-    setBoxes((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+    setBoxes((currentBoxes) => currentBoxes.map((b) => (b.id === id ? { ...b, ...updates } : b)));
   }, []);
 
   // Periodic Telemetry Simulation Loop
