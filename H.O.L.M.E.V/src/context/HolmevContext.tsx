@@ -236,7 +236,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, 600);
   }, [addLog]);
 
-  // Execute Command & Real-time Multimodal AI Processing
+  // Execute Command & Real-time Multimodal AI Orchestration
   const executeCommand = useCallback(
     async (cmd: string): Promise<string> => {
       const trimmed = cmd.trim();
@@ -247,11 +247,17 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setSystemState('PROCESSING');
       addLog(`Mister Memon > ${trimmed}`, 'USER_INPUT', 'info');
 
-      // Process through Real-Time AI Brain Engine
-      const brainResult = await aiBrain.generateResponse(trimmed, userEmotion, geminiApiKey);
-      const responseText = brainResult.text;
+      // Process through Master AI Brain Orchestrator with real live state context
+      const brainResult = await aiBrain.generateResponse(trimmed, userEmotion, geminiApiKey, undefined, {
+        smartAppliances,
+        circuitNodes,
+        cctvFeeds,
+      });
 
-      // Handle Specific System Actions
+      const responseText = brainResult.text;
+      const toolPayload = brainResult.actionPayload as { result?: any; tool?: string; status?: string } | undefined;
+
+      // Handle Viewport Tab Switching & State synchronization from real tool results
       if (brainResult.intent === 'wake') {
         shouldListenContinuouslyRef.current = true;
         setActiveCenterTab('webcam');
@@ -264,50 +270,30 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // ignore
           }
         }
-      } else if (brainResult.intent === 'circuit_cad') {
+      } else if (toolPayload?.tool === 'manipulate_circuit_3d') {
         setActiveCenterTab('circuit');
-        if (brainResult.circuitAction) {
-          const ca = brainResult.circuitAction;
-          if (ca.action === 'add') {
-            const newId = `MOD-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
-            setCircuitNodes((prev) => [
-              ...prev,
-              {
-                id: newId,
-                name: ca.moduleName || 'CUSTOM_MODULE',
-                type: ca.moduleType || 'mcu',
-                x: (Math.cos((prev.length * Math.PI) / 3) * 4),
-                y: 0,
-                z: (Math.sin((prev.length * Math.PI) / 3) * 4),
-                color: ca.moduleType === 'mcu' ? '#00f3ff' : ca.moduleType === 'relay' ? '#0055ff' : '#ff3c00',
-                connectedTo: prev.length > 0 ? [prev[0].id] : [],
-              },
-            ]);
-          } else if (ca.action === 'delete') {
-            setCircuitNodes((prev) => prev.slice(0, -1));
-          }
+        if (toolPayload.result?.addedNode) {
+          setCircuitNodes((prev) => [...prev, toolPayload.result.addedNode]);
+        } else if (toolPayload.result?.deletedId) {
+          setCircuitNodes((prev) => prev.filter((n) => n.id !== toolPayload.result.deletedId));
+        } else if (toolPayload.result?.action === 'clear_all') {
+          setCircuitNodes([]);
         }
-      } else if (brainResult.intent === 'iot_control') {
+      } else if (toolPayload?.tool === 'control_smart_home') {
         setActiveCenterTab('smarthome');
-        if (brainResult.deviceAction) {
-          const da = brainResult.deviceAction;
+        if (toolPayload.result?.deviceName) {
+          const res = toolPayload.result;
           setSmartAppliances((prev) =>
-            prev.map((d) => {
-              if (d.type === da.deviceType) {
-                return {
-                  ...d,
-                  status: da.status !== undefined ? da.status : d.status,
-                  value: da.value !== undefined ? da.value : d.value,
-                };
-              }
-              return d;
-            })
+            prev.map((d) => (d.name === res.deviceName ? { ...d, status: res.status, value: res.value ?? d.value } : d))
           );
         }
-      } else if (brainResult.intent === 'cctv_select') {
-        setActiveCenterTab('cctv');
-      } else if (brainResult.intent === 'navigation') {
+      } else if (toolPayload?.tool === 'calculate_navigation_route') {
         setActiveCenterTab('nav');
+        if (toolPayload.result) {
+          setActiveRoute(toolPayload.result);
+        }
+      } else if (trimmed.toLowerCase().includes('camera') || trimmed.toLowerCase().includes('cctv')) {
+        setActiveCenterTab('cctv');
       }
 
       addLog(responseText, 'HOLMEV_JARVIS', 'success');
@@ -335,7 +321,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       return responseText;
     },
-    [addLog, geminiApiKey, userEmotion]
+    [addLog, circuitNodes, geminiApiKey, smartAppliances, userEmotion]
   );
 
   const stopListening = useCallback(() => {

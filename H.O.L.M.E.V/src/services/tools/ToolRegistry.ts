@@ -10,17 +10,17 @@ import { smartHomeTool } from './implementations/SmartHomeTool';
 import { navigationTool } from './implementations/NavigationTool';
 
 export class ToolRegistry {
-  private tools: Map<string, ITool<any, any>> = new Map();
+  private tools: Map<string, ITool<never, unknown>> = new Map();
 
   constructor() {
-    this.register(webSearchTool);
-    this.register(systemControlTool);
-    this.register(circuitCadTool);
-    this.register(smartHomeTool);
-    this.register(navigationTool);
+    this.register(webSearchTool as unknown as ITool<never, unknown>);
+    this.register(systemControlTool as unknown as ITool<never, unknown>);
+    this.register(circuitCadTool as unknown as ITool<never, unknown>);
+    this.register(smartHomeTool as unknown as ITool<never, unknown>);
+    this.register(navigationTool as unknown as ITool<never, unknown>);
   }
 
-  public register(tool: ITool<any, any>) {
+  public register(tool: ITool<never, unknown>) {
     this.tools.set(tool.definition.name, tool);
   }
 

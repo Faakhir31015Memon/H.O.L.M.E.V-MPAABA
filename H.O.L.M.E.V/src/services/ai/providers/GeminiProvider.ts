@@ -71,13 +71,22 @@ PERSONALITY:
       throw new Error(`Gemini API returned status ${response.status}`);
     }
 
+    interface GeminiPart {
+      text?: string;
+      functionCall?: {
+        name: string;
+        args?: Record<string, unknown>;
+      };
+    }
+
     const data = await response.json();
     const candidate = data?.candidates?.[0]?.content;
-    const textPart = candidate?.parts?.find((p: any) => p.text);
-    const functionCallPart = candidate?.parts?.find((p: any) => p.functionCall);
+    const parts = (candidate?.parts || []) as GeminiPart[];
+    const textPart = parts.find((p) => p.text);
+    const functionCallPart = parts.find((p) => p.functionCall);
 
     const toolCalls: ToolCall[] = [];
-    if (functionCallPart) {
+    if (functionCallPart?.functionCall) {
       toolCalls.push({
         id: `call_${Date.now()}`,
         name: functionCallPart.functionCall.name,
