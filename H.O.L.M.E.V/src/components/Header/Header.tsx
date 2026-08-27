@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useHolmev } from '../../context/HolmevContext';
+import { useHolmev } from '../../context/useHolmev';
 import { Shield, Volume2, VolumeX, Zap, Cpu, Activity } from 'lucide-react';
 
 export const Header: React.FC = () => {

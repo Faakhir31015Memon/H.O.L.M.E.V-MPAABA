@@ -1,5 +1,4 @@
-import React from 'react';
-import { useHolmev } from '../../context/HolmevContext';
+import { useHolmev } from '../../context/useHolmev';
 import { Camera, Download, X, Eye } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 

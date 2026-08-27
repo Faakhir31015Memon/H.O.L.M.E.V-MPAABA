@@ -1,5 +1,5 @@
-import React from 'react';
-import { HolmevProvider, useHolmev } from './context/HolmevContext';
+import { HolmevProvider } from './context/HolmevContext';
+import { useHolmev } from './context/useHolmev';
 import { Header } from './components/Header/Header';
 import { SystemDiagnostics } from './components/Diagnostics/SystemDiagnostics';
 import { HexViewer } from './components/Diagnostics/HexViewer';

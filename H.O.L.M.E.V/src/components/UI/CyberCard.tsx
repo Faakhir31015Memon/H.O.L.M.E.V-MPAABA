@@ -1,5 +1,4 @@
-import React from 'react';
-import { useHolmev } from '../../context/HolmevContext';
+import { useHolmev } from '../../context/useHolmev';
 
 interface CyberCardProps {
   title?: string;
