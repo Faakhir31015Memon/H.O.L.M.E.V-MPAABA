@@ -1,38 +1,88 @@
-// Multilingual Speech Engine for HOLMEV
+// Male / JARVIS Voice Speech Engine for HOLMEV
+// Tuned for deep, calm, British/Male AI Assistant demeanor (Addressing "Mister Memon" / "Boss")
 
 class SpeechEngine {
   private synth: SpeechSynthesis | null = null;
   private isSpeaking: boolean = false;
+  private preferredMaleVoice: SpeechSynthesisVoice | null = null;
 
   constructor() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       this.synth = window.speechSynthesis;
+      this.initVoices();
+      if (this.synth.onvoiceschanged !== undefined) {
+        this.synth.onvoiceschanged = () => this.initVoices();
+      }
     }
   }
 
-  // Speak text using browser speech synthesis in appropriate accent
-  public speak(text: string, lang: 'roman_urdu' | 'urdu' | 'english' | 'hindi' = 'roman_urdu') {
+  private initVoices() {
+    if (!this.synth) return;
+    const voices = this.synth.getVoices();
+    if (!voices || voices.length === 0) return;
+
+    // Prioritize sophisticated Male JARVIS voices
+    const maleVoiceNames = [
+      'google uk english male',
+      'microsoft david',
+      'microsoft george',
+      'microsoft mark',
+      'google us english male',
+      'daniel',
+      'alex',
+      'oliver',
+      'rishi',
+    ];
+
+    // 1. Search for known male voices
+    for (const name of maleVoiceNames) {
+      const match = voices.find((v) => v.name.toLowerCase().includes(name));
+      if (match) {
+        this.preferredMaleVoice = match;
+        return;
+      }
+    }
+
+    // 2. Search for any English voice with "Male" in description/name
+    const anyMale = voices.find(
+      (v) => v.lang.startsWith('en') && (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('george'))
+    );
+    if (anyMale) {
+      this.preferredMaleVoice = anyMale;
+      return;
+    }
+
+    // 3. Fallback to British English or US English
+    const gbVoice = voices.find((v) => v.lang === 'en-GB') || voices.find((v) => v.lang.startsWith('en'));
+    this.preferredMaleVoice = gbVoice || voices[0];
+  }
+
+  // Speak text using browser speech synthesis in JARVIS Male tone
+  public speak(text: string, _lang: 'roman_urdu' | 'urdu' | 'english' | 'hindi' = 'roman_urdu') {
     if (!this.synth) return;
     try {
-      this.synth.cancel(); // Stop prior speech
+      this.synth.cancel(); // Cancel any overlapping speech immediately
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.05;
-      utterance.pitch = 1.0;
+      // Remove markdown artifacts or special characters before speaking
+      const cleanText = text
+        .replace(/[*_#`~[\]()><]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-      // Find best voice match
-      const voices = this.synth.getVoices();
-      if (voices && voices.length > 0) {
-        if (lang === 'urdu') {
-          const urduVoice = voices.find((v) => v.lang.startsWith('ur'));
-          if (urduVoice) utterance.voice = urduVoice;
-        } else if (lang === 'hindi' || lang === 'roman_urdu') {
-          const hiVoice = voices.find((v) => v.lang.startsWith('hi') || v.lang.includes('India'));
-          if (hiVoice) utterance.voice = hiVoice;
-        } else {
-          const enVoice = voices.find((v) => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural')));
-          if (enVoice) utterance.voice = enVoice;
-        }
+      if (!cleanText) return;
+
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+
+      // Deep, clear, refined male pitch (JARVIS style)
+      utterance.rate = 1.0;
+      utterance.pitch = 0.88; // Deep male pitch
+
+      if (!this.preferredMaleVoice) {
+        this.initVoices();
+      }
+
+      if (this.preferredMaleVoice) {
+        utterance.voice = this.preferredMaleVoice;
       }
 
       utterance.onstart = () => {
@@ -50,6 +100,7 @@ class SpeechEngine {
       this.synth.speak(utterance);
     } catch (e) {
       console.warn('Speech synthesis error:', e);
+      this.isSpeaking = false;
     }
   }
 
