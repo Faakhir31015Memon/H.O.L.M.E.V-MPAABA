@@ -28,6 +28,8 @@ export interface HolmevContextType extends HOLMEVState {
   setPendingConfirm: (confirm: HOLMEVState['pendingConfirm']) => void;
   
   // Advanced Multimodal Actions
+  micPermissionState?: 'unknown' | 'granted' | 'denied' | 'error';
+  audioLevel?: number;
   setActiveCenterTab: (tab: HOLMEVState['activeCenterTab']) => void;
   setUserEmotion: (emotion: UserEmotion) => void;
   setSmartAppliances: React.Dispatch<React.SetStateAction<SmartAppliance[]>>;
