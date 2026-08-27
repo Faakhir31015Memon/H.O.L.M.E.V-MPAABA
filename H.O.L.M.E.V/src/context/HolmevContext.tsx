@@ -17,13 +17,18 @@ import { aiBrain } from '../utils/aiBrain';
 import { speechEngine } from '../utils/speechEngine';
 import { HolmevContext } from './holmevContextDef';
 
+interface BrowserSpeechRecognitionResult {
+  isFinal?: boolean;
+  [index: number]: {
+    transcript: string;
+  };
+}
+
 interface BrowserSpeechRecognitionEvent {
+  resultIndex: number;
   results: {
-    [index: number]: {
-      [index: number]: {
-        transcript: string;
-      };
-    };
+    length: number;
+    [index: number]: BrowserSpeechRecognitionResult;
   };
 }
 
@@ -54,6 +59,8 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [userEmotion, setUserEmotion] = useState<UserEmotion>('NEUTRAL');
   const [isCameraActive] = useState<boolean>(false);
   const [continuousVoice, setContinuousVoice] = useState<boolean>(true);
+  const [liveTranscript, setLiveTranscript] = useState<string>('');
+  const [speechLang, setSpeechLang] = useState<HOLMEVState['speechLang']>('en-US');
   const [geminiApiKey, setGeminiApiKey] = useState<string>('');
 
   const [smartAppliances, setSmartAppliances] = useState<SmartAppliance[]>([
@@ -235,6 +242,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const trimmed = cmd.trim();
       if (!trimmed) return '';
 
+      setLiveTranscript('');
       soundFx.playClick(800);
       setSystemState('PROCESSING');
       addLog(`Mister Memon > ${trimmed}`, 'USER_INPUT', 'info');
@@ -333,6 +341,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const stopListening = useCallback(() => {
     soundFx.playVoiceStop();
     shouldListenContinuouslyRef.current = false;
+    setLiveTranscript('');
     if (speechRef.current) {
       try {
         speechRef.current.stop();
@@ -366,16 +375,32 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         const recognition = new SpeechRecognition();
-        recognition.lang = 'en-US';
-        recognition.interimResults = false;
+        recognition.lang = speechLang || 'en-US';
+        recognition.interimResults = true;
         recognition.maxAlternatives = 1;
-        recognition.continuous = false;
+        recognition.continuous = true;
 
         recognition.onresult = (event: BrowserSpeechRecognitionEvent) => {
-          const transcript = event.results[0][0].transcript;
-          if (transcript && transcript.trim()) {
-            addLog(`Mister Memon (Voice): "${transcript}"`, 'VOICE_IO', 'success');
-            executeCommand(transcript);
+          let interimStr = '';
+          let finalStr = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const res = event.results[i];
+            if (res.isFinal) {
+              finalStr += res[0].transcript;
+            } else {
+              interimStr += res[0].transcript;
+            }
+          }
+
+          if (interimStr) {
+            setLiveTranscript(interimStr);
+          }
+
+          if (finalStr && finalStr.trim()) {
+            setLiveTranscript(finalStr);
+            addLog(`Mister Memon (Voice): "${finalStr}"`, 'VOICE_IO', 'success');
+            executeCommand(finalStr);
           }
         };
 
@@ -411,7 +436,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.warn('Speech API start error:', err);
       }
     }
-  }, [addLog, executeCommand]);
+  }, [addLog, executeCommand, speechLang]);
 
   // Keep ref up to date
   useEffect(() => {
@@ -505,6 +530,8 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         userEmotion,
         isCameraActive,
         continuousVoice,
+        liveTranscript,
+        speechLang,
         smartAppliances,
         cctvFeeds,
         activeCctvIds,
@@ -534,6 +561,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setActiveRoute,
         setGeminiApiKey,
         toggleContinuousVoice,
+        setSpeechLang,
       }}
     >
       {children}

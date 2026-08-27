@@ -1,10 +1,19 @@
 import React, { useState, useRef } from 'react';
 import { useHolmev } from '../../context/useHolmev';
-import { Mic, Send, Loader2, MessageSquare } from 'lucide-react';
+import { Mic, Send, Loader2, Globe } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 
 export const InteractionBar: React.FC = () => {
-  const { systemState, startListening, stopListening, executeCommand, overkillMode } = useHolmev();
+  const {
+    systemState,
+    startListening,
+    stopListening,
+    executeCommand,
+    overkillMode,
+    liveTranscript,
+    speechLang,
+    setSpeechLang,
+  } = useHolmev();
 
   const [inputVal, setInputVal] = useState('');
   const [history, setHistory] = useState<string[]>([]);
@@ -12,14 +21,14 @@ export const InteractionBar: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const quickCommands = [
+    'HOLMEV chal kam par lag ja',
     'HOLMEV fan band kar do',
-    'HOLMEV light on karo',
-    'HOLMEV show bedroom and hall',
-    'HOLMEV IIC Road Sauna route',
-    'HOLMEV 3D circuit open karo',
-    '/diagnostics',
-    '/overkill',
-    '/help',
+    'HOLMEV YouTube par Iron Man song chalao',
+    'HOLMEV notepad mein note type karo',
+    'HOLMEV koi mazedar joke sunao',
+    'HOLMEV Desktop par project folder bana do',
+    'HOLMEV add ESP32 circuit',
+    'HOLMEV tera kam pura hua chal so ja',
   ];
 
   const handleVoiceToggle = () => {
@@ -62,10 +71,10 @@ export const InteractionBar: React.FC = () => {
 
   const getVoiceBtnStyle = () => {
     if (systemState === 'LISTENING') {
-      return 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_15px_#ffb700] animate-pulse';
+      return 'bg-amber-500/25 border-amber-400 text-amber-300 shadow-[0_0_20px_#ffb700] animate-pulse scale-105';
     }
     if (systemState === 'PROCESSING') {
-      return 'bg-purple-500/20 border-purple-400 text-purple-300 shadow-[0_0_15px_#a855f7]';
+      return 'bg-purple-500/25 border-purple-400 text-purple-300 shadow-[0_0_20px_#a855f7]';
     }
     if (overkillMode) {
       return 'bg-red-500/10 hover:bg-red-500/20 border-red-500/40 text-red-400 hover:border-red-400';
@@ -75,26 +84,64 @@ export const InteractionBar: React.FC = () => {
 
   return (
     <div className="w-full flex flex-col gap-2">
-      {/* Autocomplete Quick Command Chips */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px] font-mono-tech">
-        <span className="text-gray-500 text-[10px] uppercase flex-shrink-0 flex items-center gap-1">
-          <MessageSquare className="w-3 h-3 text-cyan-500" />
-          PROMPTS:
-        </span>
-        {quickCommands.map((cmd) => (
-          <button
-            key={cmd}
-            type="button"
-            onClick={() => {
-              soundFx.playClick(900);
-              setInputVal(cmd);
-              inputRef.current?.focus();
-            }}
-            className="px-2.5 py-0.5 rounded bg-white/[0.03] hover:bg-cyan-500/20 border border-white/5 hover:border-cyan-500/40 text-gray-300 hover:text-cyan-300 transition-colors flex-shrink-0"
-          >
-            {cmd}
-          </button>
-        ))}
+      {/* Live Voice Real-Time Transcript HUD */}
+      {systemState === 'LISTENING' && (
+        <div className="flex items-center justify-between px-3 py-1.5 bg-amber-950/80 border border-amber-500/50 rounded text-xs font-mono-tech text-amber-300 animate-pulse">
+          <div className="flex items-center gap-2">
+            <Mic className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
+            <span className="font-bold">HEARING MISTER MEMON:</span>
+            <span className="text-white italic">
+              {liveTranscript ? `"${liveTranscript}"` : 'Listening to your voice...'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px]">
+            <Globe className="w-3 h-3 text-amber-400" />
+            <span>LANG: {speechLang}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Language Switcher & Quick Command Chips */}
+      <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 scrollbar-none text-[11px] font-mono-tech">
+        {/* Language selector */}
+        <div className="flex items-center gap-1 bg-black/60 px-2 py-0.5 rounded border border-white/10 flex-shrink-0">
+          <span className="text-gray-400 text-[10px]">MIC LANG:</span>
+          {(['en-US', 'ur-PK', 'hi-IN'] as const).map((l) => (
+            <button
+              key={l}
+              type="button"
+              onClick={() => {
+                soundFx.playClick(900);
+                setSpeechLang(l);
+              }}
+              className={`px-1.5 py-0.5 rounded text-[10px] transition-colors ${
+                speechLang === l
+                  ? 'bg-cyan-500 text-black font-bold'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              {l === 'en-US' ? 'EN' : l === 'ur-PK' ? 'URDU' : 'HI'}
+            </button>
+          ))}
+        </div>
+
+        {/* Quick Action Pills */}
+        <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto scrollbar-none">
+          {quickCommands.map((cmd) => (
+            <button
+              key={cmd}
+              type="button"
+              onClick={() => {
+                soundFx.playClick(900);
+                setInputVal(cmd);
+                inputRef.current?.focus();
+              }}
+              className="px-2.5 py-0.5 rounded bg-white/[0.03] hover:bg-cyan-500/20 border border-white/5 hover:border-cyan-500/40 text-gray-300 hover:text-cyan-300 transition-colors flex-shrink-0 whitespace-nowrap"
+            >
+              {cmd}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Main Interaction Input Bar */}
@@ -108,8 +155,8 @@ export const InteractionBar: React.FC = () => {
           onClick={handleVoiceToggle}
           title={
             systemState === 'LISTENING'
-              ? 'Stop Listening'
-              : 'Voice Interaction (Speaks & Listens in Urdu/English)'
+              ? 'Click to Stop Listening'
+              : 'Click to Speak (JARVIS Continuous Male Voice Listening)'
           }
           className={`flex items-center justify-center w-10 h-10 rounded border transition-all duration-300 relative group flex-shrink-0 ${getVoiceBtnStyle()}`}
         >
@@ -138,8 +185,8 @@ export const InteractionBar: React.FC = () => {
             onKeyDown={handleKeyDown}
             placeholder={
               systemState === 'LISTENING'
-                ? 'Listening continuously... (Speak in Urdu, Roman Urdu, or English)'
-                : 'Ask HOLMEV anything (e.g. "fan band kar de", "bedroom camera dikhao", "route to sauna tower")...'
+                ? 'Listening to Mister Memon continuously... (Speak or Type naturally)'
+                : 'Ask HOLMEV anything (e.g. "YouTube par Iron Man chalao", "Desktop par folder banao", "kya haal hai")...'
             }
             className="w-full bg-transparent border-none outline-none font-mono-tech text-sm text-gray-200 placeholder-gray-500 selection:bg-cyan-500/40"
           />
