@@ -8,8 +8,7 @@ import { VectorChart } from './components/Analytics/VectorChart';
 import { ExecutionLogs } from './components/Analytics/ExecutionLogs';
 import { QuickActions } from './components/Footer/QuickActions';
 import { InteractionBar } from './components/Footer/InteractionBar';
-import { SnapshotModal } from './components/UI/SnapshotModal';
-import './App.css';
+import { VoiceDiagnosticsPanel } from './components/UI/VoiceDiagnosticsPanel';
 
 const MainDashboard: React.FC = () => {
   const { overkillMode } = useHolmev();
@@ -37,9 +36,10 @@ const MainDashboard: React.FC = () => {
       <main className="flex-1 max-w-[1720px] w-full mx-auto p-3 sm:p-4 flex flex-col gap-4 relative z-20">
         {/* 3-Column Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 flex-1 items-start">
-          {/* Left Column: System Diagnostics & Hex Memory Viewer (3.5 / 12 cols on desktop) */}
+          {/* Left Column: System Diagnostics, Hex Memory Viewer & Voice Diagnostics */}
           <div className="lg:col-span-3 xl:col-span-3 flex flex-col gap-3.5 order-2 lg:order-1">
             <SystemDiagnostics />
+            <VoiceDiagnosticsPanel />
             <HexViewer />
           </div>
 
