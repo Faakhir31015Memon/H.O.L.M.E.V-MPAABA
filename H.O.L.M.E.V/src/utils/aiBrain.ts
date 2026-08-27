@@ -297,7 +297,7 @@ export class AIBrainEngine {
         ? 'Aapka focus 100% peak par detect hua hai Boss. '
         : '';
 
-    let generatedText = '';
+    let generatedText: string;
     if (lang === 'roman_urdu') {
       if (lower.includes('kaise ho') || lower.includes('kya hal')) {
         generatedText = `Main bilkul zabardast aur 100% operational hoon, Mister Memon! ${emotionGreeting}Main aapke agle command ke liye bilkul tayyar hoon, Boss.`;

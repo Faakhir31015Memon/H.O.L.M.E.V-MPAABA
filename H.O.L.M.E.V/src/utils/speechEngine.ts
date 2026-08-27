@@ -58,7 +58,7 @@ class SpeechEngine {
   }
 
   // Speak text using browser speech synthesis in JARVIS Male tone
-  public speak(text: string, _lang: 'roman_urdu' | 'urdu' | 'english' | 'hindi' = 'roman_urdu') {
+  public speak(text: string) {
     if (!this.synth) return;
     try {
       this.synth.cancel(); // Cancel any overlapping speech immediately
