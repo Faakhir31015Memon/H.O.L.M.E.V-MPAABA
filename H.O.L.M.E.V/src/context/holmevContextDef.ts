@@ -36,6 +36,7 @@ export interface HolmevContextType extends HOLMEVState {
   setActiveRoute: (route: NavigationRoute | null) => void;
   setGeminiApiKey: (key: string) => void;
   toggleContinuousVoice: () => void;
+  setSpeechLang: (lang: HOLMEVState['speechLang']) => void;
 }
 
 export const HolmevContext = createContext<HolmevContextType | null>(null);

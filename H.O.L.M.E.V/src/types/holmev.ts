@@ -117,6 +117,8 @@ export interface HOLMEVState {
   userEmotion: UserEmotion;
   isCameraActive: boolean;
   continuousVoice: boolean;
+  liveTranscript: string;
+  speechLang: 'en-US' | 'ur-PK' | 'hi-IN';
   smartAppliances: SmartAppliance[];
   cctvFeeds: CCTVFeed[];
   activeCctvIds: string[];
