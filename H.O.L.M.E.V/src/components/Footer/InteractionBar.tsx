@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useHolmev } from '../../context/HolmevContext';
+import { useHolmev } from '../../context/useHolmev';
 import { Mic, Send, Terminal, Loader2 } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 

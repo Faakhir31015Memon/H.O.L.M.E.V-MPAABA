@@ -1,5 +1,5 @@
 import React from 'react';
-import { useHolmev } from '../../context/HolmevContext';
+import { useHolmev } from '../../context/useHolmev';
 import { Activity, Shield, Trash2, Zap, Eye } from 'lucide-react';
 
 export const QuickActions: React.FC = () => {
