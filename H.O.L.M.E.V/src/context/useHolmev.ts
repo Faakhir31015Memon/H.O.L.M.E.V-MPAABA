@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { HolmevContext } from './HolmevContext';
+import { HolmevContext } from './holmevContextDef';
 
 export const useHolmev = () => {
   const context = useContext(HolmevContext);
