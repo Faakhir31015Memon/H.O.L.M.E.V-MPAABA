@@ -73,10 +73,11 @@ const CircularGauge: React.FC<CircularGaugeProps> = ({
 export const SystemDiagnostics: React.FC = () => {
   const { metrics, overkillMode } = useHolmev();
 
-  // 16-node active neural synapse grid simulation
+  // 16-node active neural synapse grid simulation (pure calculation based on metrics)
   const neuralNodes = Array.from({ length: 16 }, (_, i) => {
-    const isActive = Math.random() > 0.3;
-    const isHot = overkillMode || (isActive && Math.random() > 0.6);
+    const threshold = ((i * 7 + metrics.cpu) % 100);
+    const isActive = threshold < metrics.neuralLoad;
+    const isHot = overkillMode || (isActive && (threshold % 3 === 0));
     return { id: i, isActive, isHot };
   });
 

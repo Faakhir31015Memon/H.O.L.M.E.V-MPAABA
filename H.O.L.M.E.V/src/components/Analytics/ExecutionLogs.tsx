@@ -140,9 +140,9 @@ export const ExecutionLogs: React.FC = () => {
             [NO LOG EVENTS MATCHING CRITERIA]
           </div>
         ) : (
-          filteredLogs.map((log) => (
+          filteredLogs.map((log, idx) => (
             <div
-              key={log.id || `${log.timestamp}-${Math.random()}`}
+              key={log.id || `${log.timestamp}-${idx}`}
               className="flex items-start gap-2 hover:bg-white/[0.03] p-1 rounded transition-colors group select-text"
             >
               {/* Timestamp */}
