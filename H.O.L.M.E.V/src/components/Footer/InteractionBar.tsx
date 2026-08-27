@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useHolmev } from '../../context/HolmevContext';
-import { Mic, MicOff, Send, Sparkles, Terminal, Loader2 } from 'lucide-react';
+import { Mic, Send, Terminal, Loader2 } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 
 export const InteractionBar: React.FC = () => {

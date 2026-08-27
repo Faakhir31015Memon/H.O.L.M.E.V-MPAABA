@@ -1,7 +1,6 @@
 import React from 'react';
 import { useHolmev } from '../../context/HolmevContext';
-import { Activity, Shield, Trash2, Zap, Eye, Volume2, Sparkles } from 'lucide-react';
-import { soundFx } from '../../utils/soundFx';
+import { Activity, Shield, Trash2, Zap, Eye } from 'lucide-react';
 
 export const QuickActions: React.FC = () => {
   const {
@@ -12,8 +11,6 @@ export const QuickActions: React.FC = () => {
     toggleCvStack,
     overkillMode,
     cvStackActive,
-    soundEnabled,
-    toggleSound,
   } = useHolmev();
 
   return (

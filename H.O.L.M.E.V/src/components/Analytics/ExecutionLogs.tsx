@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useHolmev } from '../../context/HolmevContext';
 import { CyberCard } from '../UI/CyberCard';
-import { LogLevel } from '../../types/holmev';
-import { Terminal, Trash2, Download, Search, ArrowDownCircle, ShieldCheck } from 'lucide-react';
+import type { LogLevel } from '../../types/holmev';
+import { Terminal, Trash2, Download, Search, ArrowDownCircle } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 
 export const ExecutionLogs: React.FC = () => {
@@ -12,10 +12,10 @@ export const ExecutionLogs: React.FC = () => {
   const [autoScroll, setAutoScroll] = useState(true);
   const logContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom on new log if autoScroll is enabled
+  // Auto-scroll to top on new log if autoScroll is enabled
   useEffect(() => {
     if (autoScroll && logContainerRef.current) {
-      logContainerRef.current.scrollTop = 0; // Since logs are newest-first or bottom
+      logContainerRef.current.scrollTop = 0;
     }
   }, [logs, autoScroll]);
 
