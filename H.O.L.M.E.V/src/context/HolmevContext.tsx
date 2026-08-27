@@ -306,7 +306,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       soundFx.playSuccess();
 
       // Speak response aloud in Deep Male JARVIS voice
-      speechEngine.speak(responseText, brainResult.detectedLanguage);
+      speechEngine.speak(responseText);
 
       setLastCommand({
         command: trimmed,
@@ -391,9 +391,9 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         };
 
         recognition.onend = () => {
-          if (shouldListenContinuouslyRef.current && systemState !== 'PROCESSING') {
+          if (shouldListenContinuouslyRef.current) {
             setTimeout(() => {
-              if (shouldListenContinuouslyRef.current && systemState !== 'PROCESSING') {
+              if (shouldListenContinuouslyRef.current) {
                 try {
                   recognition.start();
                 } catch {
@@ -411,7 +411,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.warn('Speech API start error:', err);
       }
     }
-  }, [addLog, executeCommand, systemState]);
+  }, [addLog, executeCommand]);
 
   // Keep ref up to date
   useEffect(() => {
