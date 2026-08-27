@@ -42,14 +42,14 @@ export interface ToolResultContract<T = unknown> {
   tool: string;
   result?: T;
   error?: string;
-  status: 'EXECUTED' | 'FAILED' | 'DEVICE_OFFLINE' | 'PERMISSION_REQUIRED' | 'CONNECTION_REFUSED';
+  status: 'EXECUTED' | 'FAILED' | 'DEVICE_OFFLINE' | 'PERMISSION_REQUIRED' | 'CONNECTION_REFUSED' | 'BLOCKED';
   executionTimeMs: number;
 }
 
 export interface AIRequest {
   query: string;
   conversationHistory: Array<{ role: 'user' | 'assistant' | 'system' | 'tool'; content: string }>;
-  emotion: UserEmotion;
+  emotion?: UserEmotion;
   language: 'roman_urdu' | 'urdu' | 'english' | 'hindi';
   taskType?: TaskType;
   availableTools?: ToolDefinition[];
@@ -70,4 +70,6 @@ export interface AIModelProvider {
   name: string;
   isAvailable(): boolean;
   generate(request: AIRequest): Promise<AIResponse>;
+  generateWithFunctionCalling?(request: AIRequest, tools: ToolDefinition[]): Promise<AIResponse>;
+  healthCheck?(): Promise<boolean>;
 }
