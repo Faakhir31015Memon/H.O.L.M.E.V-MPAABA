@@ -1,4 +1,4 @@
-import { HOLMEVBox, HOLMEVLog } from '../types/holmev';
+import type { HOLMEVBox, HOLMEVLog } from '../types/holmev';
 
 export const INITIAL_BOXES: HOLMEVBox[] = [
   {
