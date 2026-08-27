@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { useHolmev } from '../../context/HolmevContext';
+import { useHolmev } from '../../context/useHolmev';
 
 export const ReactorCore3D: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
