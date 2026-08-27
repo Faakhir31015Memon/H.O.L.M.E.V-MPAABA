@@ -1,27 +1,30 @@
-import React, { createContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { HOLMEVState, HOLMEVLog, HOLMEVBox, SystemState, LogLevel } from '../types/holmev';
 import { INITIAL_BOXES, INITIAL_LOGS } from '../utils/mockData';
 import { soundFx } from '../utils/soundFx';
+import { HolmevContext } from './holmevContextDef';
 
-export interface HolmevContextType extends HOLMEVState {
-  addLog: (text: string, source?: string, level?: LogLevel) => void;
-  clearLogs: () => void;
-  toggleOverkill: () => void;
-  toggleCvStack: () => void;
-  toggleSound: () => void;
-  runDiagnostics: () => void;
-  runSecurityScan: () => void;
-  purgeBuffers: () => void;
-  startListening: () => void;
-  stopListening: () => void;
-  executeCommand: (cmd: string) => Promise<string>;
-  captureSnapshot: (dataUrl?: string) => void;
-  clearSnapshot: () => void;
-  updateBoxPosition: (id: string, updates: Partial<HOLMEVBox>) => void;
-  setPendingConfirm: (confirm: HOLMEVState['pendingConfirm']) => void;
+interface BrowserSpeechRecognitionEvent {
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
 }
 
-export const HolmevContext = createContext<HolmevContextType | null>(null);
+interface BrowserSpeechRecognition {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: (event: BrowserSpeechRecognitionEvent) => void;
+  onerror: () => void;
+  start: () => void;
+  stop: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
 
 export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [systemState, setSystemState] = useState<SystemState>('IDLE');
@@ -62,7 +65,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [lastCommand, setLastCommand] = useState<HOLMEVState['lastCommand']>(null);
   const [pendingConfirm, setPendingConfirm] = useState<HOLMEVState['pendingConfirm']>(null);
 
-  const speechRef = useRef<any>(null);
+  const speechRef = useRef<BrowserSpeechRecognition | null>(null);
 
   // Helper to format timestamps
   const getTimestamp = () => {
@@ -287,7 +290,8 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     addLog('Voice input stream activated. Listening for voice prompt...', 'VOICE_IO', 'info');
 
     const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      (window as unknown as { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor }).SpeechRecognition ||
+      (window as unknown as { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor }).webkitSpeechRecognition;
 
     if (SpeechRecognition) {
       try {
@@ -296,7 +300,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
 
-        recognition.onresult = (event: any) => {
+        recognition.onresult = (event: BrowserSpeechRecognitionEvent) => {
           const transcript = event.results[0][0].transcript;
           addLog(`Voice recognized: "${transcript}"`, 'VOICE_IO', 'success');
           stopListening();
