@@ -1,7 +1,7 @@
 import React from 'react';
 import { useHolmev } from '../../context/HolmevContext';
 import { CyberCard } from '../UI/CyberCard';
-import { Cpu, Flame, Database, Radio, Activity, HardDrive } from 'lucide-react';
+import { Cpu, Flame, Database, Activity, HardDrive } from 'lucide-react';
 
 interface CircularGaugeProps {
   value: number;

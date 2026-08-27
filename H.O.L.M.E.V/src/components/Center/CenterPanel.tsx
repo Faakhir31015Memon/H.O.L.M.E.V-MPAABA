@@ -3,7 +3,7 @@ import { useHolmev } from '../../context/HolmevContext';
 import { CyberCard } from '../UI/CyberCard';
 import { ReactorCore3D } from './ReactorCore3D';
 import { CvVisionStack } from './CvVisionStack';
-import { Eye, Zap, Camera, Maximize2, Minimize2, Radio } from 'lucide-react';
+import { Eye, Zap, Camera, Maximize2, Minimize2 } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 
 export const CenterPanel: React.FC = () => {
