@@ -14,40 +14,15 @@ import type {
 import { INITIAL_BOXES, INITIAL_LOGS } from '../utils/mockData';
 import { soundFx } from '../utils/soundFx';
 import { aiBrain } from '../utils/aiBrain';
-import { speechEngine } from '../utils/speechEngine';
 import { HolmevContext } from './holmevContextDef';
-
-interface BrowserSpeechRecognitionResult {
-  isFinal?: boolean;
-  [index: number]: {
-    transcript: string;
-  };
-}
-
-interface BrowserSpeechRecognitionEvent {
-  resultIndex: number;
-  results: {
-    length: number;
-    [index: number]: BrowserSpeechRecognitionResult;
-  };
-}
-
-interface BrowserSpeechRecognition {
-  lang: string;
-  interimResults: boolean;
-  maxAlternatives: number;
-  continuous: boolean;
-  onresult: (event: BrowserSpeechRecognitionEvent) => void;
-  onerror: (event: unknown) => void;
-  onend: () => void;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-}
-
-type SpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
+import { voiceManager } from '../services/voice/VoiceManager';
+import { voiceSession } from '../services/voice/VoiceStateMachine';
+import type { VoiceEvent } from '../services/voice/VoiceManager';
 
 export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // ─────────────────────────────────────────────────────────
+  // Core State
+  // ─────────────────────────────────────────────────────────
   const [systemState, setSystemState] = useState<SystemState>('IDLE');
   const [overkillMode, setOverkillMode] = useState<boolean>(false);
   const [cvStackActive, setCvStackActive] = useState<boolean>(false);
@@ -62,7 +37,10 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [liveTranscript, setLiveTranscript] = useState<string>('');
   const [speechLang, setSpeechLang] = useState<HOLMEVState['speechLang']>('en-US');
   const [geminiApiKey, setGeminiApiKey] = useState<string>('');
+  const [micPermissionState, setMicPermissionState] = useState<'unknown' | 'granted' | 'denied' | 'error'>('unknown');
+  const [audioLevel, setAudioLevel] = useState<number>(0);
 
+  // Smart Appliances
   const [smartAppliances, setSmartAppliances] = useState<SmartAppliance[]>([
     { id: 'dev-1', name: 'CEILING FAN [BEDROOM]', type: 'fan', room: 'Bedroom', status: true, value: 65, irCodeHex: '0xFFA25D' },
     { id: 'dev-2', name: 'MAIN LIGHTS [BEDROOM]', type: 'light', room: 'Bedroom', status: true, irCodeHex: '0xFF629D' },
@@ -88,30 +66,17 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [activeRoute, setActiveRoute] = useState<NavigationRoute | null>(null);
 
   const [metrics, setMetrics] = useState({
-    cpu: 32,
-    gpu: 44,
-    neuralLoad: 68,
-    latency: 12,
-    temp: 41,
-    memory: 24.6,
-    power: 210,
+    cpu: 32, gpu: 44, neuralLoad: 68, latency: 12, temp: 41, memory: 24.6, power: 210,
   });
 
   const [logs, setLogs] = useState<HOLMEVLog[]>(INITIAL_LOGS);
-
   const [chart, setChart] = useState<Array<{ cpu: number; neural: number; time: string }>>([
-    { cpu: 28, neural: 60, time: '00' },
-    { cpu: 32, neural: 64, time: '02' },
-    { cpu: 35, neural: 70, time: '04' },
-    { cpu: 30, neural: 66, time: '06' },
-    { cpu: 40, neural: 72, time: '08' },
-    { cpu: 38, neural: 69, time: '10' },
-    { cpu: 33, neural: 65, time: '12' },
-    { cpu: 42, neural: 75, time: '14' },
-    { cpu: 36, neural: 68, time: '16' },
-    { cpu: 34, neural: 67, time: '18' },
+    { cpu: 28, neural: 60, time: '00' }, { cpu: 32, neural: 64, time: '02' },
+    { cpu: 35, neural: 70, time: '04' }, { cpu: 30, neural: 66, time: '06' },
+    { cpu: 40, neural: 72, time: '08' }, { cpu: 38, neural: 69, time: '10' },
+    { cpu: 33, neural: 65, time: '12' }, { cpu: 42, neural: 75, time: '14' },
+    { cpu: 36, neural: 68, time: '16' }, { cpu: 34, neural: 67, time: '18' },
   ]);
-
   const [latency, setLatency] = useState<number[]>([12, 11, 14, 12, 10, 13, 11, 15, 12, 11, 12]);
   const [boxes, setBoxes] = useState<HOLMEVBox[]>(INITIAL_BOXES);
   const [scan] = useState<{ x: number; y: number }>({ x: 240, y: 160 });
@@ -119,30 +84,244 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [lastCommand, setLastCommand] = useState<HOLMEVState['lastCommand']>(null);
   const [pendingConfirm, setPendingConfirm] = useState<HOLMEVState['pendingConfirm']>(null);
 
-  const speechRef = useRef<BrowserSpeechRecognition | null>(null);
-  const shouldListenContinuouslyRef = useRef<boolean>(true);
-  const startListeningRef = useRef<(() => void) | null>(null);
+  // Refs
+  const isProcessingRef = useRef(false);
+  const executeCommandRef = useRef<((cmd: string) => Promise<string>) | null>(null);
 
+  // ─────────────────────────────────────────────────────────
+  // Helpers
+  // ─────────────────────────────────────────────────────────
   const getTimestamp = () => {
     const now = new Date();
-    const h = String(now.getHours()).padStart(2, '0');
-    const m = String(now.getMinutes()).padStart(2, '0');
-    const s = String(now.getSeconds()).padStart(2, '0');
-    const ms = String(now.getMilliseconds()).padStart(3, '0');
-    return `${h}:${m}:${s}.${ms}`;
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}.${String(now.getMilliseconds()).padStart(3, '0')}`;
   };
 
-  const addLog = useCallback((text: string, source: string = 'HOLMEV', level: LogLevel = 'info') => {
+  const addLog = useCallback((text: string, source = 'HOLMEV', level: LogLevel = 'info') => {
     const newLog: HOLMEVLog = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
       timestamp: getTimestamp(),
-      text,
-      source,
-      level,
+      text, source, level,
     };
     setLogs((prev) => [newLog, ...prev.slice(0, 199)]);
   }, []);
 
+  // ─────────────────────────────────────────────────────────
+  // VoiceManager integration — single event subscription
+  // ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    voiceManager.setConfig({
+      language: speechLang,
+      onEvent: (event: VoiceEvent) => {
+        switch (event.type) {
+          case 'state_changed':
+            if (event.state === 'LISTENING') setSystemState('LISTENING');
+            else if (event.state === 'SPEAKING') setSystemState('LISTENING'); // keep LISTENING label while speaking
+            else if (event.state === 'DEACTIVATED' || event.state === 'IDLE') setSystemState('IDLE');
+            break;
+
+          case 'transcript_interim':
+            setLiveTranscript(event.transcript ?? '');
+            break;
+
+          case 'transcript_final': {
+            const transcript = event.transcript ?? '';
+            setLiveTranscript(transcript);
+            if (transcript.trim() && !isProcessingRef.current) {
+              const result = voiceSession.processTranscript(transcript);
+              if (result.shouldSendToAI) {
+                executeCommandRef.current?.(transcript);
+              }
+            }
+            break;
+          }
+
+          case 'audio_level':
+            setAudioLevel(event.level ?? 0);
+            break;
+
+          case 'mic_permission_denied':
+            setMicPermissionState('denied');
+            addLog('Microphone permission denied. Please allow microphone access.', 'MIC', 'warn');
+            break;
+
+          case 'error':
+            setMicPermissionState('error');
+            addLog(`Microphone error: ${event.error ?? 'Unknown error'}`, 'MIC', 'warn');
+            break;
+
+          case 'speaking_started':
+            setSystemState('LISTENING'); // show LISTENING while HOLMEV speaks
+            break;
+
+          case 'speaking_ended':
+            if (continuousVoice) setSystemState('LISTENING');
+            else setSystemState('IDLE');
+            break;
+        }
+      },
+    });
+
+    // Cleanup on unmount — destroy the VoiceManager
+    return () => {
+      voiceManager.destroy();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Update mic language when speechLang changes
+  useEffect(() => {
+    voiceManager.setLanguage(speechLang);
+  }, [speechLang]);
+
+  // ─────────────────────────────────────────────────────────
+  // Execute Command — AI Orchestration
+  // ─────────────────────────────────────────────────────────
+  const executeCommand = useCallback(
+    async (cmd: string): Promise<string> => {
+      const trimmed = cmd.trim();
+      if (!trimmed || isProcessingRef.current) return '';
+
+      isProcessingRef.current = true;
+      setLiveTranscript('');
+      soundFx.playClick(800);
+      setSystemState('PROCESSING');
+      addLog(`Mister Memon > ${trimmed}`, 'USER_INPUT', 'info');
+
+      // Tell VoiceManager to stop mic while thinking/executing
+      voiceManager.setThinking();
+
+      try {
+        const brainResult = await aiBrain.generateResponse(
+          trimmed,
+          userEmotion,
+          geminiApiKey,
+          undefined,
+          { smartAppliances, circuitNodes, cctvFeeds }
+        );
+
+        const responseText = brainResult.text;
+        const toolPayload = brainResult.actionPayload as
+          | { result?: Record<string, unknown>; tool?: string; status?: string }
+          | undefined;
+
+        // Handle viewport tab switching from real tool results
+        if (brainResult.intent === 'wake') {
+          voiceSession.activateSession();
+          setContinuousVoice(true);
+          await voiceManager.startListening();
+          setActiveCenterTab('webcam');
+        } else if (brainResult.intent === 'sleep') {
+          voiceSession.deactivateSession();
+          setContinuousVoice(false);
+          voiceManager.stopListening();
+        } else if (toolPayload?.tool === 'manipulate_circuit_3d') {
+          setActiveCenterTab('circuit');
+          if (toolPayload.result?.addedNode) {
+            const node = toolPayload.result.addedNode as CircuitNode3D;
+            setCircuitNodes((prev) => [...prev, node]);
+          } else if (toolPayload.result?.deletedId) {
+            const delId = toolPayload.result.deletedId as string;
+            setCircuitNodes((prev) => prev.filter((n) => n.id !== delId));
+          } else if (toolPayload.result?.action === 'clear_all') {
+            setCircuitNodes([]);
+          }
+        } else if (toolPayload?.tool === 'control_smart_home') {
+          setActiveCenterTab('smarthome');
+          if (toolPayload.result?.deviceName) {
+            const res = toolPayload.result as { deviceName: string; status: boolean; value?: number };
+            setSmartAppliances((prev) =>
+              prev.map((d) => d.name === res.deviceName ? { ...d, status: res.status, value: res.value ?? d.value } : d)
+            );
+          }
+        } else if (toolPayload?.tool === 'calculate_navigation_route') {
+          setActiveCenterTab('nav');
+          if (toolPayload.result) setActiveRoute(toolPayload.result as unknown as NavigationRoute);
+        } else if (trimmed.toLowerCase().includes('camera') || trimmed.toLowerCase().includes('cctv')) {
+          setActiveCenterTab('cctv');
+        }
+
+        addLog(responseText, 'HOLMEV_JARVIS', 'success');
+        soundFx.playSuccess();
+
+        setLastCommand({
+          command: trimmed,
+          timestamp: getTimestamp(),
+          status: 'success',
+          response: responseText,
+        });
+
+        // Speak via VoiceManager (single TTS source — no duplicate voices)
+        voiceManager.speak(responseText, () => {
+          // Auto-resume happens inside VoiceManager after speaking
+          isProcessingRef.current = false;
+          if (brainResult.intent !== 'sleep') {
+            setSystemState('LISTENING');
+          } else {
+            setSystemState('IDLE');
+          }
+        });
+
+        return responseText;
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+        addLog(`Error: ${errorMsg}`, 'ERROR', 'warn');
+        isProcessingRef.current = false;
+
+        // Resume listening even after error
+        if (continuousVoice) {
+          setTimeout(() => voiceManager.resumeListening(), 500);
+          setSystemState('LISTENING');
+        } else {
+          setSystemState('IDLE');
+        }
+        return '';
+      }
+    },
+    [addLog, cctvFeeds, circuitNodes, geminiApiKey, smartAppliances, userEmotion, continuousVoice]
+  );
+
+  // Keep ref up to date (used by voice event handler)
+  useEffect(() => {
+    executeCommandRef.current = executeCommand;
+  }, [executeCommand]);
+
+  // ─────────────────────────────────────────────────────────
+  // Voice Controls (public API)
+  // ─────────────────────────────────────────────────────────
+  const startListening = useCallback(async () => {
+    soundFx.playVoiceStart();
+    setContinuousVoice(true);
+    voiceSession.activateSession();
+    const ok = await voiceManager.startListening();
+    if (ok) {
+      setSystemState('LISTENING');
+      setMicPermissionState('granted');
+      addLog('Continuous voice input active. Listening for Mister Memon...', 'VOICE_IO', 'info');
+    }
+  }, [addLog]);
+
+  const stopListening = useCallback(() => {
+    soundFx.playVoiceStop();
+    setContinuousVoice(false);
+    voiceSession.deactivateSession();
+    voiceManager.stopListening();
+    setLiveTranscript('');
+    setSystemState('IDLE');
+    addLog('Voice input suspended.', 'VOICE_IO', 'info');
+  }, [addLog]);
+
+  const toggleContinuousVoice = useCallback(() => {
+    setContinuousVoice((prev) => {
+      const next = !prev;
+      addLog(`Voice Engine: Continuous microphone loop ${next ? 'ENGAGED' : 'DISENGAGED'}, Boss.`, 'VOICE_IO', 'info');
+      if (!next) voiceManager.stopListening();
+      return next;
+    });
+  }, [addLog]);
+
+  // ─────────────────────────────────────────────────────────
+  // System Operations
+  // ─────────────────────────────────────────────────────────
   const clearLogs = useCallback(() => {
     soundFx.playClick(600);
     setLogs([]);
@@ -157,15 +336,6 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return next;
     });
   }, []);
-
-  const toggleContinuousVoice = useCallback(() => {
-    setContinuousVoice((prev) => {
-      const next = !prev;
-      shouldListenContinuouslyRef.current = next;
-      addLog(`Voice Engine: Continuous microphone loop ${next ? 'ENGAGED' : 'DISENGAGED'}, Boss.`, 'VOICE_IO', 'info');
-      return next;
-    });
-  }, [addLog]);
 
   const toggleOverkill = useCallback(() => {
     setOverkillMode((prev) => {
@@ -193,15 +363,8 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     soundFx.playScan();
     setSystemState('PROCESSING');
     addLog('Initiating full system diagnostic scan sequence for Mister Memon...', 'DIAGNOSTICS', 'info');
-
-    setTimeout(() => {
-      addLog('Scanning neural clusters and synaptic matrices... [OPTIMAL]', 'DIAGNOSTICS', 'info');
-    }, 400);
-
-    setTimeout(() => {
-      addLog('Verifying IoT Relay & ESP32 IR Bridges... [ONLINE]', 'HARDWARE', 'info');
-    }, 800);
-
+    setTimeout(() => addLog('Scanning neural clusters and synaptic matrices... [OPTIMAL]', 'DIAGNOSTICS', 'info'), 400);
+    setTimeout(() => addLog('Verifying IoT Relay & ESP32 IR Bridges... [ONLINE]', 'HARDWARE', 'info'), 800);
     setTimeout(() => {
       addLog('Diagnostic scan completed successfully. All systems nominal, Boss.', 'DIAGNOSTICS', 'success');
       soundFx.playSuccess();
@@ -222,216 +385,13 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     soundFx.playPurge();
     setSystemState('PROCESSING');
     addLog('FLUSHING SYSTEM BUFFERS & QUANTUM CACHES...', 'PURGE', 'warn');
-
     setTimeout(() => {
-      setMetrics((m) => ({
-        ...m,
-        cpu: Math.max(15, m.cpu - 15),
-        neuralLoad: Math.max(25, m.neuralLoad - 20),
-        memory: 18.2,
-      }));
+      setMetrics((m) => ({ ...m, cpu: Math.max(15, m.cpu - 15), neuralLoad: Math.max(25, m.neuralLoad - 20), memory: 18.2 }));
       addLog('Memory caches flushed. 6.4 GB quantum memory reclaimed, Mister Memon.', 'KERNEL', 'success');
       soundFx.playSuccess();
       setSystemState('IDLE');
     }, 600);
   }, [addLog]);
-
-  // Execute Command & Real-time Multimodal AI Orchestration
-  const executeCommand = useCallback(
-    async (cmd: string): Promise<string> => {
-      const trimmed = cmd.trim();
-      if (!trimmed) return '';
-
-      setLiveTranscript('');
-      soundFx.playClick(800);
-      setSystemState('PROCESSING');
-      addLog(`Mister Memon > ${trimmed}`, 'USER_INPUT', 'info');
-
-      // Process through Master AI Brain Orchestrator with real live state context
-      const brainResult = await aiBrain.generateResponse(trimmed, userEmotion, geminiApiKey, undefined, {
-        smartAppliances,
-        circuitNodes,
-        cctvFeeds,
-      });
-
-      const responseText = brainResult.text;
-      const toolPayload = brainResult.actionPayload as
-        | { result?: Record<string, unknown>; tool?: string; status?: string }
-        | undefined;
-
-      // Handle Viewport Tab Switching & State synchronization from real tool results
-      if (brainResult.intent === 'wake') {
-        shouldListenContinuouslyRef.current = true;
-        setActiveCenterTab('webcam');
-      } else if (brainResult.intent === 'sleep') {
-        shouldListenContinuouslyRef.current = false;
-        if (speechRef.current) {
-          try {
-            speechRef.current.stop();
-          } catch {
-            // ignore
-          }
-        }
-      } else if (toolPayload?.tool === 'manipulate_circuit_3d') {
-        setActiveCenterTab('circuit');
-        if (toolPayload.result?.addedNode) {
-          const node = toolPayload.result.addedNode as CircuitNode3D;
-          setCircuitNodes((prev) => [...prev, node]);
-        } else if (toolPayload.result?.deletedId) {
-          const delId = toolPayload.result.deletedId as string;
-          setCircuitNodes((prev) => prev.filter((n) => n.id !== delId));
-        } else if (toolPayload.result?.action === 'clear_all') {
-          setCircuitNodes([]);
-        }
-      } else if (toolPayload?.tool === 'control_smart_home') {
-        setActiveCenterTab('smarthome');
-        if (toolPayload.result?.deviceName) {
-          const res = toolPayload.result as { deviceName: string; status: boolean; value?: number };
-          setSmartAppliances((prev) =>
-            prev.map((d) => (d.name === res.deviceName ? { ...d, status: res.status, value: res.value ?? d.value } : d))
-          );
-        }
-      } else if (toolPayload?.tool === 'calculate_navigation_route') {
-        setActiveCenterTab('nav');
-        if (toolPayload.result) {
-          setActiveRoute(toolPayload.result as unknown as NavigationRoute);
-        }
-      } else if (trimmed.toLowerCase().includes('camera') || trimmed.toLowerCase().includes('cctv')) {
-        setActiveCenterTab('cctv');
-      }
-
-      addLog(responseText, 'HOLMEV_JARVIS', 'success');
-      soundFx.playSuccess();
-
-      // Speak response aloud in Deep Male JARVIS voice
-      speechEngine.speak(responseText);
-
-      setLastCommand({
-        command: trimmed,
-        timestamp: getTimestamp(),
-        status: 'success',
-        response: responseText,
-      });
-
-      setTimeout(() => {
-        setSystemState('IDLE');
-        // If continuous voice mode is enabled and user didn't put HOLMEV to sleep, resume listening!
-        if (shouldListenContinuouslyRef.current && brainResult.intent !== 'sleep') {
-          setTimeout(() => {
-            startListeningRef.current?.();
-          }, 1600);
-        }
-      }, 600);
-
-      return responseText;
-    },
-    [addLog, cctvFeeds, circuitNodes, geminiApiKey, smartAppliances, userEmotion]
-  );
-
-  const stopListening = useCallback(() => {
-    soundFx.playVoiceStop();
-    shouldListenContinuouslyRef.current = false;
-    setLiveTranscript('');
-    if (speechRef.current) {
-      try {
-        speechRef.current.stop();
-      } catch {
-        // ignore
-      }
-      speechRef.current = null;
-    }
-    setSystemState('IDLE');
-    addLog('Voice input suspended by user.', 'VOICE_IO', 'info');
-  }, [addLog]);
-
-  const startListening = useCallback(() => {
-    soundFx.playVoiceStart();
-    setSystemState('LISTENING');
-    shouldListenContinuouslyRef.current = true;
-    addLog('Continuous voice input active. Listening for Mister Memon...', 'VOICE_IO', 'info');
-
-    const SpeechRecognition =
-      (window as unknown as { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor }).SpeechRecognition ||
-      (window as unknown as { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor }).webkitSpeechRecognition;
-
-    if (SpeechRecognition) {
-      try {
-        if (speechRef.current) {
-          try {
-            speechRef.current.abort();
-          } catch {
-            // ignore
-          }
-        }
-
-        const recognition = new SpeechRecognition();
-        recognition.lang = speechLang || 'en-US';
-        recognition.interimResults = true;
-        recognition.maxAlternatives = 1;
-        recognition.continuous = true;
-
-        recognition.onresult = (event: BrowserSpeechRecognitionEvent) => {
-          let interimStr = '';
-          let finalStr = '';
-
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            const res = event.results[i];
-            if (res.isFinal) {
-              finalStr += res[0].transcript;
-            } else {
-              interimStr += res[0].transcript;
-            }
-          }
-
-          if (interimStr) {
-            setLiveTranscript(interimStr);
-          }
-
-          if (finalStr && finalStr.trim()) {
-            setLiveTranscript(finalStr);
-            addLog(`Mister Memon (Voice): "${finalStr}"`, 'VOICE_IO', 'success');
-            executeCommand(finalStr);
-          }
-        };
-
-        recognition.onerror = (e) => {
-          console.warn('Speech recognition warning:', e);
-          if (shouldListenContinuouslyRef.current) {
-            setTimeout(() => {
-              if (shouldListenContinuouslyRef.current) {
-                startListeningRef.current?.();
-              }
-            }, 1200);
-          }
-        };
-
-        recognition.onend = () => {
-          if (shouldListenContinuouslyRef.current) {
-            setTimeout(() => {
-              if (shouldListenContinuouslyRef.current) {
-                try {
-                  recognition.start();
-                } catch {
-                  // ignore
-                }
-              }
-            }, 800);
-          }
-        };
-
-        recognition.start();
-        speechRef.current = recognition;
-        return;
-      } catch (err) {
-        console.warn('Speech API start error:', err);
-      }
-    }
-  }, [addLog, executeCommand, speechLang]);
-
-  // Keep ref up to date
-  useEffect(() => {
-    startListeningRef.current = startListening;
-  }, [startListening]);
 
   const captureSnapshot = useCallback((dataUrl?: string) => {
     soundFx.playScan();
@@ -446,15 +406,15 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     soundFx.playSuccess();
   }, [activeCenterTab, addLog, userEmotion]);
 
-  const clearSnapshot = useCallback(() => {
-    setSnapshot(null);
-  }, []);
+  const clearSnapshot = useCallback(() => setSnapshot(null), []);
 
   const updateBoxPosition = useCallback((id: string, updates: Partial<HOLMEVBox>) => {
     setBoxes((currentBoxes) => currentBoxes.map((b) => (b.id === id ? { ...b, ...updates } : b)));
   }, []);
 
+  // ─────────────────────────────────────────────────────────
   // Telemetry Loop
+  // ─────────────────────────────────────────────────────────
   useEffect(() => {
     const interval = setInterval(() => {
       setMetrics(() => {
@@ -463,95 +423,43 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const baseNeural = overkillMode ? 94 : 68;
         const baseTemp = overkillMode ? 86 : 41;
         const basePower = overkillMode ? 385 : 210;
-
-        const jitter = (val: number, range: number) => {
-          const delta = (Math.random() - 0.5) * range;
-          return Math.min(100, Math.max(5, Math.round(val + delta)));
-        };
-
+        const jitter = (val: number, range: number) => Math.min(100, Math.max(5, Math.round(val + (Math.random() - 0.5) * range)));
         const nextCpu = jitter(baseCpu, 14);
-        const nextGpu = jitter(baseGpu, 12);
         const nextNeural = jitter(baseNeural, 10);
         const nextLatency = Math.floor(Math.random() * 6) + (overkillMode ? 6 : 10);
-        const nextTemp = Math.round(baseTemp + (Math.random() - 0.5) * 3);
-        const nextPower = Math.round(basePower + (Math.random() - 0.5) * 15);
-
         setLatency((l) => [...l.slice(1), nextLatency]);
-
         setChart((c) => {
           const nowStr = new Date().getSeconds().toString().padStart(2, '0');
-          const nextChart = [...c.slice(1), { cpu: nextCpu, neural: nextNeural, time: nowStr }];
-          return nextChart;
+          return [...c.slice(1), { cpu: nextCpu, neural: nextNeural, time: nowStr }];
         });
-
         return {
-          cpu: nextCpu,
-          gpu: nextGpu,
-          neuralLoad: nextNeural,
-          latency: nextLatency,
-          temp: nextTemp,
+          cpu: nextCpu, gpu: jitter(baseGpu, 12), neuralLoad: nextNeural,
+          latency: nextLatency, temp: Math.round(baseTemp + (Math.random() - 0.5) * 3),
           memory: parseFloat((24.0 + (nextCpu / 100) * 4.2).toFixed(1)),
-          power: nextPower,
+          power: Math.round(basePower + (Math.random() - 0.5) * 15),
         };
       });
     }, 1200);
-
     return () => clearInterval(interval);
   }, [overkillMode]);
 
   return (
     <HolmevContext.Provider
       value={{
-        systemState,
-        overkillMode,
-        cvStackActive,
-        activeCenterTab,
-        metrics,
-        logs,
-        chart,
-        latency,
-        boxes,
-        scan,
-        snapshot,
-        lastCommand,
-        pendingConfirm,
-        soundEnabled,
-        securityLevel,
-        userEmotion,
-        isCameraActive,
-        continuousVoice,
-        liveTranscript,
-        speechLang,
-        smartAppliances,
-        cctvFeeds,
-        activeCctvIds,
-        circuitNodes,
-        activeRoute,
-        geminiApiKey,
-        addLog,
-        clearLogs,
-        toggleOverkill,
-        toggleCvStack,
-        toggleSound,
-        runDiagnostics,
-        runSecurityScan,
-        purgeBuffers,
-        startListening,
-        stopListening,
-        executeCommand,
-        captureSnapshot,
-        clearSnapshot,
-        updateBoxPosition,
-        setPendingConfirm,
-        setActiveCenterTab,
-        setUserEmotion,
-        setSmartAppliances,
-        setCctvFeeds,
-        setCircuitNodes,
-        setActiveRoute,
-        setGeminiApiKey,
-        toggleContinuousVoice,
-        setSpeechLang,
+        systemState, overkillMode, cvStackActive, activeCenterTab, metrics, logs,
+        chart, latency, boxes, scan, snapshot, lastCommand, pendingConfirm,
+        soundEnabled, securityLevel, userEmotion, isCameraActive, continuousVoice,
+        liveTranscript, speechLang, smartAppliances, cctvFeeds, activeCctvIds,
+        circuitNodes, activeRoute, geminiApiKey,
+        // New voice state
+        micPermissionState, audioLevel,
+        addLog, clearLogs, toggleOverkill, toggleCvStack, toggleSound,
+        runDiagnostics, runSecurityScan, purgeBuffers,
+        startListening, stopListening, executeCommand,
+        captureSnapshot, clearSnapshot, updateBoxPosition,
+        setPendingConfirm, setActiveCenterTab, setUserEmotion,
+        setSmartAppliances, setCctvFeeds, setCircuitNodes,
+        setActiveRoute, setGeminiApiKey, toggleContinuousVoice, setSpeechLang,
       }}
     >
       {children}
