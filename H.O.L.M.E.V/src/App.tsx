@@ -1,122 +1,80 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import React from 'react';
+import { HolmevProvider, useHolmev } from './context/HolmevContext';
+import { Header } from './components/Header/Header';
+import { SystemDiagnostics } from './components/Diagnostics/SystemDiagnostics';
+import { HexViewer } from './components/Diagnostics/HexViewer';
+import { CenterPanel } from './components/Center/CenterPanel';
+import { VectorChart } from './components/Analytics/VectorChart';
+import { ExecutionLogs } from './components/Analytics/ExecutionLogs';
+import { QuickActions } from './components/Footer/QuickActions';
+import { InteractionBar } from './components/Footer/InteractionBar';
+import { SnapshotModal } from './components/UI/SnapshotModal';
+import './App.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+const MainDashboard: React.FC = () => {
+  const { overkillMode } = useHolmev();
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div
+      className={`min-h-screen w-full flex flex-col relative transition-colors duration-500 overflow-x-hidden ${
+        overkillMode
+          ? 'bg-[#080204] cyber-grid-bg-red selection:bg-red-500/40'
+          : 'bg-[#020813] cyber-grid-bg selection:bg-cyan-500/40'
+      }`}
+    >
+      {/* Subtle CRT / Scanline Screen Overlay */}
+      <div className="fixed inset-0 scanline-overlay pointer-events-none z-30 opacity-40" />
 
-      <div className="ticks"></div>
+      {/* Red Alert Flash Ambient Light in Overkill Mode */}
+      {overkillMode && (
+        <div className="fixed inset-0 pointer-events-none z-10 bg-red-900/10 animate-pulse-glow" />
+      )}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      {/* Top Header */}
+      <Header />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      {/* Main 3-Column Dashboard Container */}
+      <main className="flex-1 max-w-[1720px] w-full mx-auto p-3 sm:p-4 flex flex-col gap-4 relative z-20">
+        {/* 3-Column Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 flex-1 items-start">
+          {/* Left Column: System Diagnostics & Hex Memory Viewer (3.5 / 12 cols on desktop) */}
+          <div className="lg:col-span-3 xl:col-span-3 flex flex-col gap-3.5 order-2 lg:order-1">
+            <SystemDiagnostics />
+            <HexViewer />
+          </div>
+
+          {/* Center Column: 3D Reactor Core / CV CCTV Stack (5.5 / 12 cols on desktop) */}
+          <div className="lg:col-span-6 xl:col-span-6 flex flex-col gap-3.5 order-1 lg:order-2">
+            <CenterPanel />
+            {/* Quick Actions Pills row positioned beneath center panel */}
+            <div className="bg-[#020a17]/70 backdrop-blur-md border border-cyan-500/20 rounded p-2.5">
+              <QuickActions />
+            </div>
+          </div>
+
+          {/* Right Column: Real-time Vector Waveforms & Execution Logs (3.0 / 12 cols on desktop) */}
+          <div className="lg:col-span-3 xl:col-span-3 flex flex-col gap-3.5 order-3">
+            <VectorChart />
+            <ExecutionLogs />
+          </div>
+        </div>
+
+        {/* Footer Interaction Bar (Mic, Command Prompt, Execute) */}
+        <footer className="w-full mt-auto pt-2 pb-2">
+          <InteractionBar />
+        </footer>
+      </main>
+
+      {/* Modals */}
+      <SnapshotModal />
+    </div>
+  );
+};
+
+export default function App() {
+  return (
+    <HolmevProvider>
+      <MainDashboard />
+    </HolmevProvider>
+  );
 }
-
-export default App
