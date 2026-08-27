@@ -254,6 +254,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         cctvFeeds,
       });
 
+      const responseText = brainResult.text;
       const toolPayload = brainResult.actionPayload as
         | { result?: Record<string, unknown>; tool?: string; status?: string }
         | undefined;
