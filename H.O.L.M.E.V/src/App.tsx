@@ -9,6 +9,8 @@ import { ExecutionLogs } from './components/Analytics/ExecutionLogs';
 import { QuickActions } from './components/Footer/QuickActions';
 import { InteractionBar } from './components/Footer/InteractionBar';
 import { VoiceDiagnosticsPanel } from './components/UI/VoiceDiagnosticsPanel';
+import { SnapshotModal } from './components/UI/SnapshotModal';
+import './App.css';
 
 const MainDashboard: React.FC = () => {
   const { overkillMode } = useHolmev();
