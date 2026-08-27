@@ -254,8 +254,9 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         cctvFeeds,
       });
 
-      const responseText = brainResult.text;
-      const toolPayload = brainResult.actionPayload as { result?: any; tool?: string; status?: string } | undefined;
+      const toolPayload = brainResult.actionPayload as
+        | { result?: Record<string, unknown>; tool?: string; status?: string }
+        | undefined;
 
       // Handle Viewport Tab Switching & State synchronization from real tool results
       if (brainResult.intent === 'wake') {
@@ -273,16 +274,18 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       } else if (toolPayload?.tool === 'manipulate_circuit_3d') {
         setActiveCenterTab('circuit');
         if (toolPayload.result?.addedNode) {
-          setCircuitNodes((prev) => [...prev, toolPayload.result.addedNode]);
+          const node = toolPayload.result.addedNode as CircuitNode3D;
+          setCircuitNodes((prev) => [...prev, node]);
         } else if (toolPayload.result?.deletedId) {
-          setCircuitNodes((prev) => prev.filter((n) => n.id !== toolPayload.result.deletedId));
+          const delId = toolPayload.result.deletedId as string;
+          setCircuitNodes((prev) => prev.filter((n) => n.id !== delId));
         } else if (toolPayload.result?.action === 'clear_all') {
           setCircuitNodes([]);
         }
       } else if (toolPayload?.tool === 'control_smart_home') {
         setActiveCenterTab('smarthome');
         if (toolPayload.result?.deviceName) {
-          const res = toolPayload.result;
+          const res = toolPayload.result as { deviceName: string; status: boolean; value?: number };
           setSmartAppliances((prev) =>
             prev.map((d) => (d.name === res.deviceName ? { ...d, status: res.status, value: res.value ?? d.value } : d))
           );
@@ -290,7 +293,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       } else if (toolPayload?.tool === 'calculate_navigation_route') {
         setActiveCenterTab('nav');
         if (toolPayload.result) {
-          setActiveRoute(toolPayload.result);
+          setActiveRoute(toolPayload.result as unknown as NavigationRoute);
         }
       } else if (trimmed.toLowerCase().includes('camera') || trimmed.toLowerCase().includes('cctv')) {
         setActiveCenterTab('cctv');
@@ -321,7 +324,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       return responseText;
     },
-    [addLog, circuitNodes, geminiApiKey, smartAppliances, userEmotion]
+    [addLog, cctvFeeds, circuitNodes, geminiApiKey, smartAppliances, userEmotion]
   );
 
   const stopListening = useCallback(() => {
