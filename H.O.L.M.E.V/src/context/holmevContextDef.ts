@@ -1,5 +1,14 @@
 import { createContext } from 'react';
-import type { HOLMEVState, HOLMEVBox, LogLevel } from '../types/holmev';
+import type {
+  HOLMEVState,
+  HOLMEVBox,
+  LogLevel,
+  UserEmotion,
+  SmartAppliance,
+  CCTVFeed,
+  CircuitNode3D,
+  NavigationRoute,
+} from '../types/holmev';
 
 export interface HolmevContextType extends HOLMEVState {
   addLog: (text: string, source?: string, level?: LogLevel) => void;
@@ -17,6 +26,16 @@ export interface HolmevContextType extends HOLMEVState {
   clearSnapshot: () => void;
   updateBoxPosition: (id: string, updates: Partial<HOLMEVBox>) => void;
   setPendingConfirm: (confirm: HOLMEVState['pendingConfirm']) => void;
+  
+  // Advanced Multimodal Actions
+  setActiveCenterTab: (tab: HOLMEVState['activeCenterTab']) => void;
+  setUserEmotion: (emotion: UserEmotion) => void;
+  setSmartAppliances: React.Dispatch<React.SetStateAction<SmartAppliance[]>>;
+  setCctvFeeds: React.Dispatch<React.SetStateAction<CCTVFeed[]>>;
+  setCircuitNodes: React.Dispatch<React.SetStateAction<CircuitNode3D[]>>;
+  setActiveRoute: (route: NavigationRoute | null) => void;
+  setGeminiApiKey: (key: string) => void;
+  toggleContinuousVoice: () => void;
 }
 
 export const HolmevContext = createContext<HolmevContextType | null>(null);

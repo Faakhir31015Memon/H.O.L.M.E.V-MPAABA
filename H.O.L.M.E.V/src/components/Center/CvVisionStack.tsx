@@ -1,23 +1,27 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useHolmev } from '../../context/useHolmev';
-import type { HOLMEVBox } from '../../types/holmev';
-import { Camera, Crosshair, CheckCircle2 } from 'lucide-react';
+import type { HOLMEVBox, UserEmotion } from '../../types/holmev';
+import { Camera, Crosshair, CheckCircle2, Video, VideoOff, Smile, Sparkles } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
 
 export const CvVisionStack: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const {
     boxes,
     updateBoxPosition,
     overkillMode,
     addLog,
     captureSnapshot,
+    userEmotion,
+    setUserEmotion,
   } = useHolmev();
 
   const [selectedBoxId, setSelectedBoxId] = useState<string | null>(boxes[0]?.id || null);
   const [flashEffect, setFlashEffect] = useState(false);
+  const [isLiveWebcam, setIsLiveWebcam] = useState(false);
+  const [webcamError, setWebcamError] = useState<string | null>(null);
 
-  // Keep ref for animation loop
   const boxesRef = useRef<HOLMEVBox[]>(boxes);
   useEffect(() => {
     boxesRef.current = boxes;
@@ -25,7 +29,40 @@ export const CvVisionStack: React.FC = () => {
 
   const selectedBox = boxes.find((b) => b.id === selectedBoxId);
 
-  // Take Snapshot helper
+  // Toggle real live camera
+  const toggleLiveWebcam = async () => {
+    if (isLiveWebcam) {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+        videoRef.current.srcObject = null;
+      }
+      setIsLiveWebcam(false);
+      soundFx.playClick(600);
+      addLog('Live Optical Webcam feed disconnected. Switching back to simulated matrix.', 'VISION_IO', 'info');
+    } else {
+      try {
+        soundFx.playScan();
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 360, facingMode: 'user' },
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+        }
+        setIsLiveWebcam(true);
+        setWebcamError(null);
+        addLog('Live Optical Webcam stream connected! Face emotion classifier online.', 'VISION_IO', 'success');
+        soundFx.playSuccess();
+      } catch (err: any) {
+        console.warn('Webcam permission error:', err);
+        setWebcamError(err.message || 'Webcam permission denied or not found.');
+        addLog(`Webcam error: ${err.message || 'Access denied'}. Operating in simulated mode.`, 'VISION_IO', 'warn');
+      }
+    }
+  };
+
+  // Take Snapshot
   const handleSnapshot = () => {
     setFlashEffect(true);
     setTimeout(() => setFlashEffect(false), 200);
@@ -63,6 +100,13 @@ export const CvVisionStack: React.FC = () => {
     addLog(`CV Vision: Acquired new track target [${newId}: ${label}]`, 'CV_STACK', 'info');
   };
 
+  // Emotion switcher cycle
+  const handleCycleEmotion = (newEmotion: UserEmotion) => {
+    soundFx.playClick(900);
+    setUserEmotion(newEmotion);
+    addLog(`Neural Vision: Face emotion updated to [${newEmotion}]. AI Brain demeanor adjusted.`, 'NEURAL_VISION', 'info');
+  };
+
   // Canvas Motion and HUD Rendering Loop
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -80,28 +124,50 @@ export const CvVisionStack: React.FC = () => {
       const width = canvas.width;
       const height = canvas.height;
 
-      // Clear with dark semi-transparent CCTV background
-      ctx.fillStyle = '#020b18';
-      ctx.fillRect(0, 0, width, height);
+      // If live webcam is active, draw the video frame onto canvas!
+      if (isLiveWebcam && videoRef.current && videoRef.current.readyState >= 2) {
+        ctx.drawImage(videoRef.current, 0, 0, width, height);
 
-      // 1. CCTV Grid pattern
-      ctx.strokeStyle = 'rgba(0, 243, 255, 0.04)';
-      ctx.lineWidth = 1;
-      const gridSize = 36;
-      for (let x = 0; x < width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
-      }
-      for (let y = 0; y < height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
+        // Face Landmark Box Simulation over live user
+        const faceX = width / 2 - 75;
+        const faceY = height / 2 - 90;
+        const faceW = 150;
+        const faceH = 170;
+
+        ctx.strokeStyle = overkillMode ? '#ff3c00' : '#00f3ff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(faceX, faceY, faceW, faceH);
+
+        // Header tag
+        ctx.fillStyle = overkillMode ? '#ff3c00' : '#00f3ff';
+        ctx.fillRect(faceX, faceY - 20, faceW, 20);
+        ctx.fillStyle = '#01040a';
+        ctx.font = 'bold 10px "Share Tech Mono", monospace';
+        ctx.fillText(`USER FACE: ${userEmotion} [98.6%]`, faceX + 6, faceY - 6);
+      } else {
+        // Clear with dark semi-transparent CCTV background
+        ctx.fillStyle = '#020b18';
+        ctx.fillRect(0, 0, width, height);
+
+        // CCTV Grid pattern
+        ctx.strokeStyle = 'rgba(0, 243, 255, 0.04)';
+        ctx.lineWidth = 1;
+        const gridSize = 36;
+        for (let x = 0; x < width; x += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+        }
+        for (let y = 0; y < height; y += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        }
       }
 
-      // 2. Animated CCTV Laser Scanline
+      // Animated Laser Scanline
       const scanY = (tick * 1.8) % height;
       const grad = ctx.createLinearGradient(0, scanY - 30, 0, scanY);
       grad.addColorStop(0, 'rgba(0, 243, 255, 0)');
@@ -116,10 +182,9 @@ export const CvVisionStack: React.FC = () => {
       ctx.lineTo(width, scanY);
       ctx.stroke();
 
-      // 3. Update & Draw Bounding Boxes
+      // Draw Bounding Boxes
       const currentBoxes = boxesRef.current;
       currentBoxes.forEach((box) => {
-        // Physics update: bounce off edges
         box.x += box.dx;
         box.y += box.dy;
 
@@ -143,40 +208,36 @@ export const CvVisionStack: React.FC = () => {
         const isSelected = box.id === selectedBoxId;
         const boxColor = overkillMode ? '#ff3c00' : isSelected ? '#00f3ff' : box.color || '#0055ff';
 
-        // Draw Box Border
         ctx.strokeStyle = boxColor;
         ctx.lineWidth = isSelected ? 2 : 1.2;
         ctx.strokeRect(box.x, box.y, box.w, box.h);
 
-        // Corner tick marks
         const cornerLen = 8;
         ctx.lineWidth = 2.5;
-        // Top-left
         ctx.beginPath();
         ctx.moveTo(box.x, box.y + cornerLen);
         ctx.lineTo(box.x, box.y);
         ctx.lineTo(box.x + cornerLen, box.y);
         ctx.stroke();
-        // Top-right
+
         ctx.beginPath();
         ctx.moveTo(box.x + box.w - cornerLen, box.y);
         ctx.lineTo(box.x + box.w, box.y);
         ctx.lineTo(box.x + box.w, box.y + cornerLen);
         ctx.stroke();
-        // Bottom-left
+
         ctx.beginPath();
         ctx.moveTo(box.x, box.y + box.h - cornerLen);
         ctx.lineTo(box.x, box.y + box.h);
         ctx.lineTo(box.x + cornerLen, box.y + box.h);
         ctx.stroke();
-        // Bottom-right
+
         ctx.beginPath();
         ctx.moveTo(box.x + box.w - cornerLen, box.y + box.h);
         ctx.lineTo(box.x + box.w, box.y + box.h);
         ctx.lineTo(box.x + box.w, box.y + box.h - cornerLen);
         ctx.stroke();
 
-        // Label Badge
         ctx.fillStyle = boxColor;
         ctx.fillRect(box.x, box.y - 18, box.w > 120 ? box.w : 120, 18);
 
@@ -187,18 +248,9 @@ export const CvVisionStack: React.FC = () => {
           box.x + 4,
           box.y - 6
         );
-
-        // Distance & Coordinates tag below box
-        ctx.fillStyle = isSelected ? '#00f3ff' : '#9ca3af';
-        ctx.font = '8px "Share Tech Mono", monospace';
-        ctx.fillText(
-          `X:${Math.round(box.x)} Y:${Math.round(box.y)} [v:${box.dx.toFixed(1)},${box.dy.toFixed(1)}]`,
-          box.x,
-          box.y + box.h + 12
-        );
       });
 
-      // 4. Center Targeting Reticle
+      // Reticle
       const cx = width / 2;
       const cy = height / 2;
       ctx.strokeStyle = 'rgba(0, 243, 255, 0.25)';
@@ -225,41 +277,15 @@ export const CvVisionStack: React.FC = () => {
     return () => {
       cancelAnimationFrame(animId);
     };
-  }, [overkillMode, selectedBoxId]);
-
-  // Click on canvas to select bounding box
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const clickX = (e.clientX - rect.left) * scaleX;
-    const clickY = (e.clientY - rect.top) * scaleY;
-
-    soundFx.playClick(1100);
-
-    // Find clicked box
-    const found = boxes.find(
-      (b) =>
-        clickX >= b.x &&
-        clickX <= b.x + b.w &&
-        clickY >= b.y - 20 &&
-        clickY <= b.y + b.h + 20
-    );
-
-    if (found) {
-      setSelectedBoxId(found.id);
-      addLog(`Target locked: ${found.id} [${found.label}]`, 'CV_STACK', 'info');
-    }
-  };
+  }, [isLiveWebcam, overkillMode, selectedBoxId, userEmotion]);
 
   return (
     <div className="flex flex-col gap-2">
+      {/* Hidden Video element for streaming webcam frames */}
+      <video ref={videoRef} className="hidden" playsInline muted autoPlay />
+
       {/* CCTV Viewport with Canvas */}
       <div className="relative w-full h-[320px] md:h-[360px] overflow-hidden rounded bg-black/60 border border-white/10 flex items-center justify-center">
-        {/* White Flash Effect on Snapshot */}
         {flashEffect && (
           <div className="absolute inset-0 bg-white z-30 transition-opacity duration-200" />
         )}
@@ -268,23 +294,38 @@ export const CvVisionStack: React.FC = () => {
           ref={canvasRef}
           width={640}
           height={360}
-          onClick={handleCanvasClick}
           className="w-full h-full object-contain cursor-crosshair"
         />
 
         {/* CCTV Top Overlay HUD */}
         <div className="absolute top-2 left-2 flex items-center gap-2 bg-black/70 px-2 py-1 rounded border border-white/10 text-[10px] font-mono-tech">
           <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-          <span className="text-red-400 font-bold">REC // CAM-01 [OPTIC-FEED]</span>
+          <span className="text-red-400 font-bold">
+            {isLiveWebcam ? 'LIVE WEBCAM // FACE CLASSIFIER' : 'OPTIC MATRIX // SIMULATED'}
+          </span>
           <span className="text-gray-400">30 FPS // 1080p</span>
         </div>
 
-        <div className="absolute top-2 right-2 flex items-center gap-2 bg-black/70 px-2 py-1 rounded border border-white/10 text-[10px] font-mono-tech">
-          <span className="text-cyan-400">TRACKED: {boxes.length} OBJECTS</span>
+        {/* Live Detected Emotion Pill */}
+        <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-black/80 px-2.5 py-1 rounded border border-cyan-500/30 text-[10px] font-mono-tech">
+          <Smile className="w-3.5 h-3.5 text-cyan-400" />
+          <span>MOOD: <strong className="text-cyan-300">{userEmotion}</strong></span>
         </div>
 
-        {/* Snapshot & Action Pill on Canvas */}
+        {/* Snapshot & Camera Actions */}
         <div className="absolute bottom-2 right-2 flex items-center gap-1.5 z-10">
+          <button
+            type="button"
+            onClick={toggleLiveWebcam}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-mono-tech transition-colors ${
+              isLiveWebcam
+                ? 'bg-red-600/40 border border-red-500 text-red-300'
+                : 'bg-green-600/30 hover:bg-green-600/50 border border-green-500/40 text-green-300'
+            }`}
+          >
+            {isLiveWebcam ? <VideoOff className="w-3 h-3" /> : <Video className="w-3 h-3" />}
+            <span>{isLiveWebcam ? 'STOP WEBCAM' : 'START LIVE WEBCAM'}</span>
+          </button>
           <button
             type="button"
             onClick={handleAddTarget}
@@ -304,25 +345,33 @@ export const CvVisionStack: React.FC = () => {
         </div>
       </div>
 
-      {/* Selected Target Inspector Bar */}
-      {selectedBox && (
-        <div className="p-2.5 bg-white/[0.02] border border-cyan-500/20 rounded flex flex-wrap items-center justify-between gap-2 text-xs font-mono-tech">
-          <div className="flex items-center gap-2">
-            <span className="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-300 rounded border border-cyan-500/40 font-semibold">
-              {selectedBox.id}
-            </span>
-            <span className="text-gray-200 font-bold">{selectedBox.label}</span>
-          </div>
-
-          <div className="flex items-center gap-3 text-[11px] text-gray-400">
-            <span>CONFIDENCE: <strong className="text-cyan-300">{(selectedBox.confidence * 100).toFixed(1)}%</strong></span>
-            <span>VELOCITY: <strong className="text-gray-200">[{selectedBox.dx.toFixed(1)}, {selectedBox.dy.toFixed(1)}]</strong></span>
-            <span className="text-green-400 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> TRACK_LOCKED
-            </span>
-          </div>
+      {/* Emotion Selector Toolbar & Target Readout */}
+      <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-[#020a17] border border-white/10 rounded text-xs font-mono-tech">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-gray-400 text-[10px]">SIMULATE EMOTION:</span>
+          {(['HAPPY', 'NEUTRAL', 'FOCUSED', 'TIRED', 'SURPRISED'] as const).map((em) => (
+            <button
+              key={em}
+              type="button"
+              onClick={() => handleCycleEmotion(em)}
+              className={`px-2 py-0.5 rounded text-[10px] transition-colors ${
+                userEmotion === em
+                  ? 'bg-cyan-500 text-black font-bold'
+                  : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white'
+              }`}
+            >
+              {em}
+            </button>
+          ))}
         </div>
-      )}
+
+        {selectedBox && (
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className="text-cyan-300 font-bold">{selectedBox.id}</span>
+            <span className="text-gray-400">LOCK: {(selectedBox.confidence * 100).toFixed(1)}%</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

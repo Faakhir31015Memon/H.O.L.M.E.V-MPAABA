@@ -1,7 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { HOLMEVState, HOLMEVLog, HOLMEVBox, SystemState, LogLevel } from '../types/holmev';
+import type {
+  HOLMEVState,
+  HOLMEVLog,
+  HOLMEVBox,
+  SystemState,
+  LogLevel,
+  UserEmotion,
+  SmartAppliance,
+  CCTVFeed,
+  CircuitNode3D,
+  NavigationRoute,
+} from '../types/holmev';
 import { INITIAL_BOXES, INITIAL_LOGS } from '../utils/mockData';
 import { soundFx } from '../utils/soundFx';
+import { aiBrain } from '../utils/aiBrain';
+import { speechEngine } from '../utils/speechEngine';
 import { HolmevContext } from './holmevContextDef';
 
 interface BrowserSpeechRecognitionEvent {
@@ -18,6 +31,7 @@ interface BrowserSpeechRecognition {
   lang: string;
   interimResults: boolean;
   maxAlternatives: number;
+  continuous: boolean;
   onresult: (event: BrowserSpeechRecognitionEvent) => void;
   onerror: () => void;
   start: () => void;
@@ -30,9 +44,40 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [systemState, setSystemState] = useState<SystemState>('IDLE');
   const [overkillMode, setOverkillMode] = useState<boolean>(false);
   const [cvStackActive, setCvStackActive] = useState<boolean>(false);
+  const [activeCenterTab, setActiveCenterTab] = useState<HOLMEVState['activeCenterTab']>('reactor');
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [securityLevel, setSecurityLevel] = useState<HOLMEVState['securityLevel']>('ALPHA-SECURE');
   
+  // Multimodal AI Brain & Smart Systems State
+  const [userEmotion, setUserEmotion] = useState<UserEmotion>('NEUTRAL');
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const [continuousVoice, setContinuousVoice] = useState<boolean>(true);
+  const [geminiApiKey, setGeminiApiKey] = useState<string>('');
+
+  const [smartAppliances, setSmartAppliances] = useState<SmartAppliance[]>([
+    { id: 'dev-1', name: 'CEILING FAN [BEDROOM]', type: 'fan', room: 'Bedroom', status: true, value: 65, irCodeHex: '0xFFA25D' },
+    { id: 'dev-2', name: 'MAIN LIGHTS [BEDROOM]', type: 'light', room: 'Bedroom', status: true, irCodeHex: '0xFF629D' },
+    { id: 'dev-3', name: 'INVERTER AC [BEDROOM]', type: 'ac', room: 'Bedroom', status: true, value: 24, irCodeHex: '0xFFE21D' },
+    { id: 'dev-4', name: 'SMART TV [LIVING ROOM]', type: 'tv', room: 'Living Room', status: false, irCodeHex: '0xFF22DD' },
+  ]);
+
+  const [cctvFeeds, setCctvFeeds] = useState<CCTVFeed[]>([
+    { id: 'cam-bed', name: 'CAM_01: BEDROOM', room: 'Bedroom', status: 'ONLINE', fps: 30, resolution: '1080p', selected: true },
+    { id: 'cam-hall', name: 'CAM_02: HALLWAY', room: 'Hallway', status: 'ONLINE', fps: 30, resolution: '1080p', selected: true },
+    { id: 'cam-liv', name: 'CAM_03: LIVING ROOM', room: 'Living Room', status: 'ONLINE', fps: 24, resolution: '720p', selected: false },
+    { id: 'cam-ent', name: 'CAM_04: ENTRANCE PERIMETER', room: 'Entrance', status: 'MOTION_DETECTED', fps: 30, resolution: '1080p', selected: false },
+  ]);
+
+  const [activeCctvIds, setActiveCctvIds] = useState<string[]>(['cam-bed', 'cam-hall']);
+
+  const [circuitNodes, setCircuitNodes] = useState<CircuitNode3D[]>([
+    { id: 'mod-1', name: 'ESP32_AI_CORE', type: 'mcu', x: 0, y: 0, z: 0, color: '#00f3ff' },
+    { id: 'mod-2', name: '4CH_RELAY_BOARD', type: 'relay', x: -3.5, y: 0, z: 2, color: '#0055ff' },
+    { id: 'mod-3', name: 'IR_TRANSCEIVER', type: 'ir_blaster', x: 3.5, y: 0, z: 2, color: '#ff3c00' },
+  ]);
+
+  const [activeRoute, setActiveRoute] = useState<NavigationRoute | null>(null);
+
   const [metrics, setMetrics] = useState({
     cpu: 32,
     gpu: 44,
@@ -67,7 +112,6 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const speechRef = useRef<BrowserSpeechRecognition | null>(null);
 
-  // Helper to format timestamps
   const getTimestamp = () => {
     const now = new Date();
     const h = String(now.getHours()).padStart(2, '0');
@@ -77,7 +121,6 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return `${h}:${m}:${s}.${ms}`;
   };
 
-  // Add Log function
   const addLog = useCallback((text: string, source: string = 'HOLMEV', level: LogLevel = 'info') => {
     const newLog: HOLMEVLog = {
       id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -104,7 +147,14 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   }, []);
 
-  // Overkill mode toggle
+  const toggleContinuousVoice = useCallback(() => {
+    setContinuousVoice((prev) => {
+      const next = !prev;
+      addLog(`Voice Engine: Continuous conversation mode ${next ? 'ENABLED' : 'DISABLED'}.`, 'VOICE_IO', 'info');
+      return next;
+    });
+  }, [addLog]);
+
   const toggleOverkill = useCallback(() => {
     setOverkillMode((prev) => {
       const next = !prev;
@@ -112,7 +162,6 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         soundFx.playAlarm();
         setSecurityLevel('OVERKILL-ENGAGED');
         addLog('CRITICAL: Overkill mode ENGAGED! Thermal throttling disabled. 4.8 GHz clock unlocked.', 'OVERKILL', 'warn');
-        addLog('Red alert security protocol engaged. Max power routed to Quantum Core.', 'DEFENSE', 'warn');
       } else {
         soundFx.playClick(440);
         setSecurityLevel('ALPHA-SECURE');
@@ -122,21 +171,12 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   }, [addLog]);
 
-  // CV Stack toggle
   const toggleCvStack = useCallback(() => {
     soundFx.playClick(750);
-    setCvStackActive((prev) => {
-      const next = !prev;
-      addLog(
-        next ? 'Display route switched to CCTV/CV Vision tracking stack.' : 'Display route switched to 3D Quantum Reactor Core.',
-        'VIEWPORT',
-        'info'
-      );
-      return next;
-    });
-  }, [addLog]);
+    setActiveCenterTab((prev) => (prev === 'webcam' ? 'reactor' : 'webcam'));
+    setCvStackActive((prev) => !prev);
+  }, []);
 
-  // Run full Diagnostics
   const runDiagnostics = useCallback(() => {
     soundFx.playScan();
     setSystemState('PROCESSING');
@@ -147,17 +187,16 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, 400);
 
     setTimeout(() => {
-      addLog('Verifying memory registers (0x0000 - 0xFFFF)... [0 FAULTS]', 'MEMORY', 'info');
-    }, 900);
+      addLog('Verifying IoT Relay & ESP32 IR Bridges... [ONLINE]', 'HARDWARE', 'info');
+    }, 800);
 
     setTimeout(() => {
-      addLog('Diagnostic scan completed successfully. System operating at 99.8% health.', 'DIAGNOSTICS', 'success');
+      addLog('Diagnostic scan completed successfully. All subsystems operational.', 'DIAGNOSTICS', 'success');
       soundFx.playSuccess();
       setSystemState('IDLE');
-    }, 1500);
+    }, 1400);
   }, [addLog]);
 
-  // Run Security Scan
   const runSecurityScan = useCallback(() => {
     soundFx.playScan();
     addLog('Executing perimeter cyber-defense threat assessment...', 'SECURITY', 'info');
@@ -167,7 +206,6 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, 800);
   }, [addLog]);
 
-  // Purge Buffers
   const purgeBuffers = useCallback(() => {
     soundFx.playPurge();
     setSystemState('PROCESSING');
@@ -186,7 +224,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, 600);
   }, [addLog]);
 
-  // Execute Command
+  // Execute Command & AI Brain Multimodal Processing
   const executeCommand = useCallback(
     async (cmd: string): Promise<string> => {
       const trimmed = cmd.trim();
@@ -197,49 +235,46 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       addLog(`> ${trimmed}`, 'USER_INPUT', 'info');
 
       const lower = trimmed.toLowerCase();
-      let responseText: string;
 
-      if (lower === '/help' || lower === 'help') {
-        responseText =
-          'Available commands:\n- /diagnostics: Run system diagnostic sweep\n- /security: Run firewall & intrusion scan\n- /purge: Flush buffers and memory\n- /overkill: Toggle overclock mode\n- /cv: Toggle Computer Vision stack\n- /status: Display full telemetry\n- /clear: Clear execution logs\n- /scan: Force CV laser re-acquisition\n- Or type any natural query for neural response.';
-        addLog(responseText, 'HOLMEV', 'info');
-      } else if (lower === '/diagnostics' || lower.includes('diagnostic')) {
-        runDiagnostics();
-        responseText = 'Diagnostic routine triggered.';
-      } else if (lower === '/security' || lower.includes('security')) {
-        runSecurityScan();
-        responseText = 'Security evaluation executed.';
-      } else if (lower === '/purge' || lower.includes('purge')) {
-        purgeBuffers();
-        responseText = 'Memory buffer purged.';
-      } else if (lower === '/overkill' || lower.includes('overkill')) {
-        toggleOverkill();
-        responseText = 'Overkill mode toggled.';
-      } else if (lower === '/cv' || lower.includes('toggle cv') || lower.includes('camera')) {
-        toggleCvStack();
-        responseText = 'Vision stack toggled.';
-      } else if (lower === '/clear' || lower === 'clear') {
-        clearLogs();
-        responseText = 'Logs cleared.';
-      } else if (lower === '/status' || lower.includes('status')) {
-        responseText = `System Status: [${securityLevel}] | CPU: ${metrics.cpu}% | GPU: ${metrics.gpu}% | Neural: ${metrics.neuralLoad}% | Latency: ${metrics.latency}ms | Temp: ${metrics.temp}°C`;
-        addLog(responseText, 'HOLMEV', 'success');
-      } else if (lower === '/scan' || lower.includes('scan')) {
-        soundFx.playScan();
-        setScan({ x: Math.floor(Math.random() * 400 + 50), y: Math.floor(Math.random() * 250 + 50) });
-        responseText = 'Targeting laser re-calibrated to active tracking coordinates.';
-        addLog(responseText, 'CV_STACK', 'info');
-      } else {
-        const neuralResponses = [
-          `Query processed through neural matrix. Confidence: 99.4%. Subsystem parameters adjusted according to specification.`,
-          `Synthesizing telemetry vectors for "${trimmed}". Neural pathway synced. All subsystems reporting green.`,
-          `Tactical computation completed for "${trimmed}". 0 anomalies detected in primary sector.`,
-          `HOLMEV Agent active: Multimodal synthesis confirms command execution. Routing through local quantum accelerator.`,
-        ];
-        responseText = neuralResponses[Math.floor(Math.random() * neuralResponses.length)];
-        addLog(responseText, 'HOLMEV_AI', 'success');
-        soundFx.playSuccess();
+      // UI Route actions
+      if (lower.includes('camera') || lower.includes('cctv')) {
+        setActiveCenterTab('cctv');
+      } else if (lower.includes('circuit') || lower.includes('curcuit')) {
+        setActiveCenterTab('circuit');
+      } else if (lower.includes('fan') || lower.includes('light') || lower.includes('ac') || lower.includes('home')) {
+        setActiveCenterTab('smarthome');
+      } else if (lower.includes('route') || lower.includes('rasta') || lower.includes('navigate') || lower.includes('sauna') || lower.includes('iic')) {
+        setActiveCenterTab('nav');
+      } else if (lower.includes('webcam') || lower.includes('face') || lower.includes('mood')) {
+        setActiveCenterTab('webcam');
       }
+
+      // Smart Device state updates if commanded
+      if (lower.includes('fan') || lower.includes('pankha')) {
+        if (lower.includes('off') || lower.includes('band')) {
+          setSmartAppliances((prev) => prev.map((d) => (d.type === 'fan' ? { ...d, status: false } : d)));
+        } else if (lower.includes('on') || lower.includes('chalao')) {
+          setSmartAppliances((prev) => prev.map((d) => (d.type === 'fan' ? { ...d, status: true } : d)));
+        }
+      }
+
+      if (lower.includes('light') || lower.includes('batti')) {
+        if (lower.includes('off') || lower.includes('band')) {
+          setSmartAppliances((prev) => prev.map((d) => (d.type === 'light' ? { ...d, status: false } : d)));
+        } else if (lower.includes('on') || lower.includes('chalao')) {
+          setSmartAppliances((prev) => prev.map((d) => (d.type === 'light' ? { ...d, status: true } : d)));
+        }
+      }
+
+      // Generate AI Multilingual Response
+      const brainResult = await aiBrain.generateResponse(trimmed, userEmotion, geminiApiKey);
+      const responseText = brainResult.text;
+
+      addLog(responseText, 'HOLMEV_AI', 'success');
+      soundFx.playSuccess();
+
+      // Speak response aloud using Multilingual Speech Engine
+      speechEngine.speak(responseText, brainResult.detectedLanguage);
 
       setLastCommand({
         command: trimmed,
@@ -250,11 +285,17 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       setTimeout(() => {
         setSystemState('IDLE');
-      }, 500);
+        // If continuous voice mode is enabled and user didn't deactivate, continue listening!
+        if (continuousVoice && !lower.includes('deactivate') && !lower.includes('bye')) {
+          setTimeout(() => {
+            startListening();
+          }, 1500);
+        }
+      }, 600);
 
       return responseText;
     },
-    [addLog, clearLogs, metrics, purgeBuffers, runDiagnostics, runSecurityScan, securityLevel, toggleCvStack, toggleOverkill]
+    [addLog, continuousVoice, geminiApiKey, userEmotion]
   );
 
   const stopListening = useCallback(() => {
@@ -272,14 +313,15 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const simulateVoiceQuery = useCallback(() => {
     const queries = [
-      'analyze sector 7 anomalies',
-      'run diagnostics on neural core',
-      'status report',
-      'optimize reactor output',
-      'enhance surveillance targeting',
+      'HOLMEV fan band kar de',
+      'HOLMEV show bedroom and hallway camera',
+      'HOLMEV IIC Road Sauna Tower ka route bata',
+      'HOLMEV light on kar do',
+      'HOLMEV 3D circuit open karo',
+      'HOLMEV kaise ho aap',
     ];
     const picked = queries[Math.floor(Math.random() * queries.length)];
-    addLog(`Voice prompt parsed: "${picked}"`, 'VOICE_IO', 'success');
+    addLog(`Voice query: "${picked}"`, 'VOICE_IO', 'success');
     stopListening();
     executeCommand(picked);
   }, [addLog, executeCommand, stopListening]);
@@ -287,7 +329,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const startListening = useCallback(() => {
     soundFx.playVoiceStart();
     setSystemState('LISTENING');
-    addLog('Voice input stream activated. Listening for voice prompt...', 'VOICE_IO', 'info');
+    addLog('Voice input active. Listening for natural command (Urdu, Roman Urdu, English)...', 'VOICE_IO', 'info');
 
     const SpeechRecognition =
       (window as unknown as { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor }).SpeechRecognition ||
@@ -299,6 +341,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         recognition.lang = 'en-US';
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
+        recognition.continuous = false;
 
         recognition.onresult = (event: BrowserSpeechRecognitionEvent) => {
           const transcript = event.results[0][0].transcript;
@@ -328,19 +371,18 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, 2800);
   }, [addLog, executeCommand, simulateVoiceQuery, stopListening, systemState]);
 
-  // Snapshot capture
   const captureSnapshot = useCallback((dataUrl?: string) => {
     soundFx.playScan();
     const newSnapshot = {
       id: `SNP-${Date.now()}`,
       timestamp: getTimestamp(),
       imageUrl: dataUrl,
-      metadata: `Resolution: 1920x1080 | Mode: ${cvStackActive ? 'CCTV_CV_STREAM' : '3D_REACTOR_CORE'} | Overkill: ${overkillMode}`,
+      metadata: `Resolution: 1920x1080 | Tab: ${activeCenterTab.toUpperCase()} | Emotion: ${userEmotion}`,
     };
     setSnapshot(newSnapshot);
     addLog(`Snapshot captured: ${newSnapshot.id} [${newSnapshot.metadata}]`, 'SNAPSHOT', 'success');
     soundFx.playSuccess();
-  }, [addLog, cvStackActive, overkillMode]);
+  }, [activeCenterTab, addLog, userEmotion]);
 
   const clearSnapshot = useCallback(() => {
     setSnapshot(null);
@@ -350,7 +392,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setBoxes((currentBoxes) => currentBoxes.map((b) => (b.id === id ? { ...b, ...updates } : b)));
   }, []);
 
-  // Periodic Telemetry Simulation Loop
+  // Telemetry Loop
   useEffect(() => {
     const interval = setInterval(() => {
       setMetrics(() => {
@@ -372,10 +414,8 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const nextTemp = Math.round(baseTemp + (Math.random() - 0.5) * 3);
         const nextPower = Math.round(basePower + (Math.random() - 0.5) * 15);
 
-        // Update latency buffer
         setLatency((l) => [...l.slice(1), nextLatency]);
 
-        // Update Chart History
         setChart((c) => {
           const nowStr = new Date().getSeconds().toString().padStart(2, '0');
           const nextChart = [...c.slice(1), { cpu: nextCpu, neural: nextNeural, time: nowStr }];
@@ -403,6 +443,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         systemState,
         overkillMode,
         cvStackActive,
+        activeCenterTab,
         metrics,
         logs,
         chart,
@@ -414,6 +455,15 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         pendingConfirm,
         soundEnabled,
         securityLevel,
+        userEmotion,
+        isCameraActive,
+        continuousVoice,
+        smartAppliances,
+        cctvFeeds,
+        activeCctvIds,
+        circuitNodes,
+        activeRoute,
+        geminiApiKey,
         addLog,
         clearLogs,
         toggleOverkill,
@@ -429,6 +479,14 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         clearSnapshot,
         updateBoxPosition,
         setPendingConfirm,
+        setActiveCenterTab,
+        setUserEmotion,
+        setSmartAppliances,
+        setCctvFeeds,
+        setCircuitNodes,
+        setActiveRoute,
+        setGeminiApiKey,
+        toggleContinuousVoice,
       }}
     >
       {children}
