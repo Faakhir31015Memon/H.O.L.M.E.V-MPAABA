@@ -49,7 +49,7 @@ export class IntentClassifier {
     query: string,
     language: 'roman_urdu' | 'urdu' | 'english' | 'hindi',
     userTitle: string,
-    conversationHistory?: Array<{ role: string; content: string }>
+    conversationHistory?: Array<{ role: 'user' | 'assistant' | 'system' | 'tool'; content: string }>
   ): Promise<ClassificationResult> {
     const lower = query.toLowerCase().trim();
 

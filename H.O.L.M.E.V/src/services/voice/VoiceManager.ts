@@ -89,7 +89,6 @@ export class VoiceManager {
 
   // TTS
   private synth: SpeechSynthesis | null = null;
-  private currentUtterance: SpeechSynthesisUtterance | null = null;
   private preferredVoice: SpeechSynthesisVoice | null = null;
 
   // Audio Level Monitoring (AnalyserNode)
@@ -102,7 +101,6 @@ export class VoiceManager {
 
   // Barge-in detection while speaking
   private bargeInListenerActive = false;
-  private bargeInStream: MediaStream | null = null;
   private bargeInAnalyser: AnalyserNode | null = null;
   private bargeInBuffer: Float32Array | null = null;
   private bargeInFrame: number | null = null;

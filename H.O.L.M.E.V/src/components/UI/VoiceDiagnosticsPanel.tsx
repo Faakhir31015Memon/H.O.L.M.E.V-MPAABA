@@ -6,11 +6,10 @@ import { Activity, Mic, ShieldCheck, Cpu, Terminal, CheckCircle2, AlertTriangle,
 
 export const VoiceDiagnosticsPanel: React.FC = () => {
   const { systemState, liveTranscript, speechLang, micPermissionState, audioLevel = 0 } = useHolmev();
-  const [logs, setLogs] = useState<AuditEntry[]>([]);
+  const [logs, setLogs] = useState<AuditEntry[]>(() => auditLogger.getEntries(10));
   const [micDevices, setMicDevices] = useState<MediaDeviceInfo[]>([]);
 
   useEffect(() => {
-    setLogs(auditLogger.getEntries(10));
     const unsubscribe = auditLogger.onEntry(() => {
       setLogs(auditLogger.getEntries(10));
     });

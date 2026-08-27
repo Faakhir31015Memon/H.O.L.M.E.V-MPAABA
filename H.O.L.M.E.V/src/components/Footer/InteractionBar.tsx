@@ -55,8 +55,9 @@ export const InteractionBar: React.FC = () => {
   // Generate 12 real audio level bars for the live microphone visualizer
   const bars = Array.from({ length: 12 }, (_, i) => {
     const factor = Math.sin((i / 12) * Math.PI);
+    const pseudoJitter = ((i * 17) % 11) - 5;
     const heightPercent = systemState === 'LISTENING'
-      ? Math.max(15, Math.min(100, Math.round(audioLevel * 100 * factor + (Math.random() * 10))))
+      ? Math.max(15, Math.min(100, Math.round(audioLevel * 100 * factor + pseudoJitter)))
       : 10;
     return heightPercent;
   });
