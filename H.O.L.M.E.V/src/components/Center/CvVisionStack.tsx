@@ -154,13 +154,13 @@ export const CvVisionStack: React.FC = () => {
         // Top-left
         ctx.beginPath();
         ctx.moveTo(box.x, box.y + cornerLen);
-        ctx.lineTo(box.x);
+        ctx.lineTo(box.x, box.y);
         ctx.lineTo(box.x + cornerLen, box.y);
         ctx.stroke();
         // Top-right
         ctx.beginPath();
         ctx.moveTo(box.x + box.w - cornerLen, box.y);
-        ctx.lineTo(box.x);
+        ctx.lineTo(box.x + box.w, box.y);
         ctx.lineTo(box.x + box.w, box.y + cornerLen);
         ctx.stroke();
         // Bottom-left

@@ -354,7 +354,7 @@ export const HolmevProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Periodic Telemetry Simulation Loop
   useEffect(() => {
     const interval = setInterval(() => {
-      setMetrics((prev) => {
+      setMetrics(() => {
         const baseCpu = overkillMode ? 82 : 32;
         const baseGpu = overkillMode ? 91 : 44;
         const baseNeural = overkillMode ? 94 : 68;
