@@ -157,7 +157,7 @@ export class AIBrainOrchestrator {
     }
 
     // 4. Synthesize natural language response based on ACTUAL tool result
-    let responseText = '';
+    let responseText: string;
 
     if (toolResult) {
       if (toolResult.success) {

@@ -257,6 +257,14 @@ export class VoiceManager {
     this.currentUtterance = null;
   }
 
+  public getCurrentUtterance(): SpeechSynthesisUtterance | null {
+    return this.currentUtterance;
+  }
+
+  public getBargeInStream(): MediaStream | null {
+    return this.bargeInStream;
+  }
+
   public isSpeaking(): boolean {
     return this.state === 'SPEAKING';
   }
