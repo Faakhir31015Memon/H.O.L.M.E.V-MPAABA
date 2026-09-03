@@ -92,25 +92,39 @@ export class WebSearchTool implements ITool<WebSearchArgs, WebSearchResult> {
       }
 
       // 3. Open Web Knowledge Query Fallback
-      const pollinationsSearchUrl = `https://text.pollinations.ai/${encodeURIComponent(
-        `Search query: "${query}". Provide a direct 2-3 sentence factual answer with verified facts.`
-      )}`;
-      const pollRes = await fetch(pollinationsSearchUrl);
-      if (pollRes.ok) {
-        const text = await pollRes.text();
-        if (text && text.trim().length > 10) {
-          return {
-            success: true,
-            tool: 'search_web',
-            result: {
-              query,
-              summary: text.trim(),
-              sources: ['Live Internet Search Engine'],
-            },
-            status: 'EXECUTED',
-            executionTimeMs: Math.round(performance.now() - startTime),
-          };
+      try {
+        const pollRes = await fetch('https://text.pollinations.ai/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              {
+                role: 'system',
+                content: 'Provide a direct 2-3 sentence factual web search summary.',
+              },
+              { role: 'user', content: `Search query: "${query}"` },
+            ],
+          }),
+        });
+
+        if (pollRes.ok) {
+          const text = await pollRes.text();
+          if (text && text.trim().length > 10 && !text.includes('403 Forbidden')) {
+            return {
+              success: true,
+              tool: 'search_web',
+              result: {
+                query,
+                summary: text.trim(),
+                sources: ['Live Internet Search Engine'],
+              },
+              status: 'EXECUTED',
+              executionTimeMs: Math.round(performance.now() - startTime),
+            };
+          }
         }
+      } catch {
+        // Ignore fallback error
       }
 
       return {
