@@ -90,6 +90,7 @@ export class VoiceManager {
   // TTS
   private synth: SpeechSynthesis | null = null;
   private preferredVoice: SpeechSynthesisVoice | null = null;
+  private currentUtterance: SpeechSynthesisUtterance | null = null;
 
   // Audio Level Monitoring (AnalyserNode)
   private audioContext: AudioContext | null = null;
@@ -104,6 +105,7 @@ export class VoiceManager {
   private bargeInAnalyser: AnalyserNode | null = null;
   private bargeInBuffer: Float32Array | null = null;
   private bargeInFrame: number | null = null;
+  private bargeInStream: MediaStream | null = null;
 
   // Track whether we initialized mic
   private micPermissionGranted = false;
@@ -266,7 +268,7 @@ export class VoiceManager {
   /** Get current real-time audio level (0-1). Returns 0 if mic is off. */
   public getAudioLevel(): number {
     if (!this.analyser || !this.levelBuffer) return 0;
-    this.analyser.getFloatTimeDomainData(this.levelBuffer);
+    (this.analyser.getFloatTimeDomainData as (array: Float32Array) => void)(this.levelBuffer);
     let sum = 0;
     for (let i = 0; i < this.levelBuffer.length; i++) {
       sum += Math.abs(this.levelBuffer[i]);
@@ -615,7 +617,7 @@ export class VoiceManager {
         if (!this.bargeInListenerActive) return;
         if (!this.bargeInAnalyser || !this.bargeInBuffer) return;
 
-        this.bargeInAnalyser.getFloatTimeDomainData(this.bargeInBuffer);
+        (this.bargeInAnalyser.getFloatTimeDomainData as (array: Float32Array) => void)(this.bargeInBuffer);
         let sum = 0;
         for (let i = 0; i < this.bargeInBuffer.length; i++) {
           sum += Math.abs(this.bargeInBuffer[i]);

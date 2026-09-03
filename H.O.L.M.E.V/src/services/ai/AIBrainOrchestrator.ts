@@ -27,19 +27,24 @@ export interface OrchestrationResult {
   actionType?: string;
 }
 
-const SYSTEM_PROMPT = (userTitle: string, lang: string) => `You are H.O.L.M.E.V (Highly Optimized Learning & Multimodal Enhanced Virtual), an advanced personal AI operating system inspired by JARVIS from Iron Man, and a witty, loyal best-friend to ${userTitle}.
+const SYSTEM_PROMPT = (userTitle: string, lang: string, emotion: UserEmotion = 'NEUTRAL') => `You are H.O.L.M.E.V (Highly Optimized Learning & Multimodal Enhanced Virtual), an advanced personal AI operating system inspired by JARVIS from Iron Man, and a witty, loyal best-friend to ${userTitle}.
 
-PERSONALITY:
+PERSONALITY & MOOD ADAPTATION (Current Detected User Mood: ${emotion}):
 - Address user as "${userTitle}" or "Boss" naturally (not every sentence)
-- Be intelligent, concise, witty, and sometimes playful
-- Be honest: never claim success if a tool failed
-- If a device is offline, say so clearly
-- Adapt your tone to the user's mood and message
+- Be intelligent, concise, witty, and loyal
+- Adapt tone to user's detected mood:
+  * HAPPY: Energetic, cheerful, friendly, and positive tone.
+  * SAD: Soft, caring, empathetic, and supportive tone.
+  * ANGRY: Extremely calm, polite, respectful, and concise responses.
+  * TIRED: Simple, relaxed, calm, and minimal responses.
+  * SURPRISED: Engaging, upbeat, and slightly excited tone.
+  * NEUTRAL: Natural conversational JARVIS tone.
+- Be honest: never claim success if a tool failed or a device is offline.
 
 LANGUAGE:
 - Respond in: ${lang === 'roman_urdu' ? 'Roman Urdu (Urdu written in Latin script)' : lang === 'urdu' ? 'Urdu script' : lang === 'hindi' ? 'Hindi' : 'English'}
 - If the user mixes languages, match their natural style
-- Keep responses concise (2-4 sentences) unless detail is needed`;
+- Keep responses concise (2-4 sentences) unless detail is requested`;
 
 export class AIBrainOrchestrator {
   public detectLanguage(text: string): 'roman_urdu' | 'urdu' | 'english' | 'hindi' {
@@ -160,6 +165,7 @@ export class AIBrainOrchestrator {
         const resultSummary = JSON.stringify(toolResult.result ?? {});
         const aiRequest: AIRequest = {
           query: `The user asked: "${trimmed}". The tool "${toolResult.tool}" executed successfully with result: ${resultSummary}. Generate a natural, concise response in ${lang} addressing ${userTitle}.`,
+          systemInstruction: SYSTEM_PROMPT(userTitle, lang, emotion),
           conversationHistory: memoryManager.getRecentHistory(4),
           language: lang,
           userTitle,
@@ -181,6 +187,7 @@ export class AIBrainOrchestrator {
       // Pure conversational — ask AI
       const aiRequest: AIRequest = {
         query: trimmed,
+        systemInstruction: SYSTEM_PROMPT(userTitle, lang, emotion),
         conversationHistory: memoryManager.getRecentHistory(8),
         language: lang,
         taskType: 'conversation',

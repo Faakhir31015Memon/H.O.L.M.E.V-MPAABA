@@ -8,7 +8,7 @@ import { modelRouter } from '../services/ai/ModelRouter';
 export interface BrainResponse {
   text: string;
   detectedLanguage: 'roman_urdu' | 'urdu' | 'english' | 'hindi';
-  intent?: 'wake' | 'sleep' | 'system_action' | 'iot_control' | 'cctv_select' | 'navigation' | 'circuit_cad' | 'general' | 'tool_executed' | 'conversation';
+  intent?: 'wake' | 'sleep' | 'system_action' | 'iot_control' | 'cctv_select' | 'navigation' | 'circuit_cad' | 'general' | 'tool_executed' | 'conversation' | 'permission_blocked';
   actionPayload?: unknown;
 }
 
