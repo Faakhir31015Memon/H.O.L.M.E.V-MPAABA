@@ -48,6 +48,7 @@ export interface ToolResultContract<T = unknown> {
 
 export interface AIRequest {
   query: string;
+  systemInstruction?: string;
   conversationHistory: Array<{ role: 'user' | 'assistant' | 'system' | 'tool'; content: string }>;
   emotion?: UserEmotion;
   language: 'roman_urdu' | 'urdu' | 'english' | 'hindi';

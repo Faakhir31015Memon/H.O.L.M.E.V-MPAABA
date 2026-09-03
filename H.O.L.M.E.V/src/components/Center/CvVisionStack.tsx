@@ -8,7 +8,6 @@ import { faceEmotionAnalyzer } from '../../services/vision/FaceEmotionAnalyzer';
 export const CvVisionStack: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const {
     boxes,
