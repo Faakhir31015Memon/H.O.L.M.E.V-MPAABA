@@ -3,6 +3,7 @@ import { useHolmev } from '../../context/useHolmev';
 import type { HOLMEVBox, UserEmotion } from '../../types/holmev';
 import { Camera, Crosshair, Video, VideoOff, Smile, Hand } from 'lucide-react';
 import { soundFx } from '../../utils/soundFx';
+import { faceEmotionAnalyzer } from '../../services/vision/FaceEmotionAnalyzer';
 
 export const CvVisionStack: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -69,85 +70,12 @@ export const CvVisionStack: React.FC = () => {
   const analyzeWebcamFrame = useCallback(() => {
     if (!videoRef.current || !isLiveWebcam || videoRef.current.readyState < 2) return;
 
-    if (!offscreenCanvasRef.current) {
-      offscreenCanvasRef.current = document.createElement('canvas');
-      offscreenCanvasRef.current.width = 160;
-      offscreenCanvasRef.current.height = 90;
-    }
-
-    const offCanvas = offscreenCanvasRef.current;
-    const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
-    if (!offCtx) return;
-
-    offCtx.drawImage(videoRef.current, 0, 0, 160, 90);
-    const frame = offCtx.getImageData(0, 0, 160, 90);
-    const data = frame.data;
-
-    let totalBrightness = 0;
-    let skinPixelCount = 0;
-    let mouthRegionMotion = 0;
-    let rightSideHandPixels = 0;
-
-    // Analyze pixel distribution
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const brightness = (r + g + b) / 3;
-      totalBrightness += brightness;
-
-      const px = (i / 4) % 160;
-      const py = Math.floor(i / 4 / 160);
-
-      // Skin-tone detection
-      if (r > 60 && g > 40 && b > 20 && r > b && r - g > 10) {
-        skinPixelCount++;
-        // Mouth region (lower-center)
-        if (px >= 60 && px <= 100 && py >= 50 && py <= 75) {
-          mouthRegionMotion += brightness;
-        }
-        // Hand gesture zone (bottom-right / left)
-        if (px > 120 && py > 35) {
-          rightSideHandPixels++;
-        }
-      }
-    }
-
-    const avgBrightness = totalBrightness / (160 * 90);
-
-    // Dynamic Emotion Calculation based on real pixel analysis
-    let detectedEmotion: UserEmotion;
-    let conf: number;
-
-    if (skinPixelCount > 300) {
-      const mouthRatio = mouthRegionMotion / Math.max(1, skinPixelCount);
-      if (mouthRatio > 25) {
-        detectedEmotion = 'HAPPY';
-        conf = 97.4;
-      } else if (avgBrightness < 50) {
-        detectedEmotion = 'TIRED';
-        conf = 89.2;
-      } else if (mouthRatio > 18) {
-        detectedEmotion = 'EXCITED';
-        conf = 95.8;
-      } else {
-        detectedEmotion = 'FOCUSED';
-        conf = 94.1;
-      }
-    } else {
-      detectedEmotion = 'NEUTRAL';
-      conf = 91.5;
-    }
-
-    // Hand Gesture Recognition (Pinch / Open Palm)
-    if (rightSideHandPixels > 250) {
-      setHandGesture('HAND RAISED // 3D GESTURE ACTIVE');
-    } else {
+    const result = faceEmotionAnalyzer.analyzeFrame(videoRef.current);
+    setUserEmotion(result.emotion);
+    setEmotionConfidence(parseFloat((result.confidence * 100).toFixed(1)));
+    if (!result.faceDetected) {
       setHandGesture(null);
     }
-
-    setUserEmotion(detectedEmotion);
-    setEmotionConfidence(parseFloat(conf.toFixed(1)));
   }, [isLiveWebcam, setUserEmotion]);
 
   // Periodic Frame Analysis

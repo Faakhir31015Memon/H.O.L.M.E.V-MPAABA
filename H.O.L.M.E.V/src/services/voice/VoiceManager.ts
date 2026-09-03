@@ -115,7 +115,7 @@ export class VoiceManager {
       pitchOverride: config.pitchOverride ?? 0.88,
       rateOverride: config.rateOverride ?? 1.0,
       bargeInLevelThreshold: config.bargeInLevelThreshold ?? 0.15,
-      onEvent: config.onEvent ?? (() => {}),
+      onEvent: config.onEvent ?? (() => { }),
     };
 
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
